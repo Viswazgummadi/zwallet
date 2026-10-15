@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Window theme only: everything visible is Compose (ZwTheme). Colors come from generated tokens. -->
+<resources>
+    <style name="Theme.Zwallet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/zw_page</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

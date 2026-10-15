@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<resources>
+    <string name="home_greeting_morning">Good morning</string>
+    <string name="home_greeting_afternoon">Good afternoon</string>
+    <string name="home_greeting_evening">Good evening</string>
+    <string name="home_menu">Accounts, budgets and settings</string>
+    <string name="home_first_run_title">Add your first expense</string>
+    <string name="home_first_run_body">Everything stays on this phone. zwallet has no internet access.</string>
+    <string name="home_add_expense">Add expense</string>
+    <string name="home_import_sms">Import from SMS</string>
+    <string name="home_restore_file">Restore from a .zwallet file</string>
+</resources>

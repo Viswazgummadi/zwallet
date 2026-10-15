@@ -59,7 +59,7 @@ function iconSet(root: string): Array<[string, string]> {
   return [...out.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
-function pathData(stem: string): string {
+export function pathData(stem: string): string {
   const svg = readFileSync(path.join(SYMBOLS, 'rounded', `${stem}.svg`), 'utf8');
   if (!svg.includes('viewBox="0 -960 960 960"')) throw new Error(`${stem}: unexpected viewBox`);
   const paths = [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);

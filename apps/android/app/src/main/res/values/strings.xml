@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<resources>
+    <string name="nav_home">Home</string>
+    <string name="nav_activity">Activity</string>
+    <string name="nav_insights">Insights</string>
+    <string name="nav_people">People</string>
+    <string name="quick_add">Add transaction</string>
+</resources>

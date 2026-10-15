@@ -25,7 +25,8 @@ const pnpm = (...args) => ({
   cwd: ROOT,
 });
 const gradle = (...args) => ({
-  cmd: isWin ? 'gradlew.bat' : './gradlew',
+  // cmd.exe needs the absolute, quoted path (the repo path contains a space).
+  cmd: isWin ? `"${path.join(ANDROID, 'gradlew.bat')}"` : './gradlew',
   args: ['--console=plain', ...args],
   cwd: ANDROID,
   requires: path.join(ANDROID, 'settings.gradle.kts'),

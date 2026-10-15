@@ -61,8 +61,39 @@ internal fun Project.configureKtlint() {
 
 /** Shared fixtures (packages/contracts) are visible to every JVM/Robolectric test. */
 internal fun Project.configureTests() {
+    val shortHome = windowsShortHome()
+    // Robolectric test JVMs in different modules race on ~/.robolectric-download-lock (fails on
+    // Windows); one Robolectric test task at a time across the build. Pure JVM tests stay parallel.
+    val robolectric =
+        gradle.sharedServices.registerIfAbsent("robolectricSerial", RobolectricSerialService::class.java) {
+            maxParallelUsages.set(1)
+        }
     tasks.withType<Test>().configureEach {
+        if (name.endsWith("UnitTest")) usesService(robolectric)
         systemProperty("zwallet.repoRoot", repoRoot.path)
         inputs.dir(repoRoot.resolve("packages/contracts/fixtures")).withPropertyName("contractFixtures").optional()
+        // Robolectric URL-encodes a space in user.home ("G%20Viswaz") and then can't open its own
+        // android-all jar from ~/.m2. Give test JVMs the 8.3 short form of the same directory.
+        if (shortHome != null) systemProperty("user.home", shortHome)
+        // Robolectric 4.17 reaches into FileDescriptor internals (JDK 21+ hides them by default).
+        jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
     }
 }
+
+/**
+ * On Windows with a space in the home path, the same directory's 8.3 short name (taken from
+ * %TEMP%, which Windows keeps in short form, and verified to be the same directory). Null
+ * elsewhere, so Linux CI is unaffected.
+ */
+private fun Project.windowsShortHome(): String? {
+    val home = System.getProperty("user.home") ?: return null
+    if (!System.getProperty("os.name").orEmpty().startsWith("Windows") || ' ' !in home) return null
+    val temp = providers.environmentVariable("TEMP").orNull ?: return null
+    val candidate = File(temp).parentFile?.parentFile?.parentFile ?: return null // ...\AppData\Local\Temp
+    if (' ' in candidate.path || candidate.canonicalPath != File(home).canonicalPath) return null
+    return candidate.path
+}
+
+/** Marker build service used only to limit concurrency (see configureTests). */
+abstract class RobolectricSerialService :
+    org.gradle.api.services.BuildService<org.gradle.api.services.BuildServiceParameters.None>
