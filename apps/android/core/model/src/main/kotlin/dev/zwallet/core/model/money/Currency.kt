@@ -33,7 +33,10 @@ class Currency private constructor(
         val JPY = Currency("JPY", 0, "¥", Grouping.WESTERN)
         val KWD = Currency("KWD", 3, null, Grouping.WESTERN)
 
-        private val byCode = listOf(INR, USD, EUR, GBP, AED, JPY, KWD).associateBy { it.code }
+        /** Every supported currency; must equal fixtures/money.json "currencies" (tested). */
+        val ALL: List<Currency> = listOf(INR, USD, EUR, GBP, AED, JPY, KWD)
+
+        private val byCode = ALL.associateBy { it.code }
 
         /** The supported currency for an ISO code, or null. */
         fun of(code: String): Currency? = byCode[code]

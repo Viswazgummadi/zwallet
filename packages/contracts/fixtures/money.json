@@ -69,6 +69,8 @@
       { "minor": -16500, "currency": "INR", "style": "list", "text": "−₹165" },
       { "minor": 123456789, "currency": "USD", "style": "full", "text": "$1,234,567.89" },
       { "minor": 99, "currency": "EUR", "style": "full", "text": "€0.99" },
+      { "minor": 123456789, "currency": "GBP", "style": "full", "text": "£1,234,567.89" },
+      { "minor": -500, "currency": "GBP", "style": "list", "text": "−£5" },
       { "minor": 1234567, "currency": "JPY", "style": "full", "text": "¥1,234,567" },
       { "minor": 1234567, "currency": "JPY", "style": "list", "text": "¥1,234,567" },
       { "minor": 1234, "currency": "KWD", "style": "full", "text": "KWD 1.234" },

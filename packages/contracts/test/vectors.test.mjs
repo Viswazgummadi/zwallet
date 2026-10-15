@@ -23,6 +23,10 @@ test('money vectors are well-formed and within MAX_MINOR', () => {
   }
   const has = (s, text) => money.expression.cases.some((c) => c.input === text);
   assert.ok(has('expression', '0.1+0.2'), 'AC-4.2.4 vector present');
+  for (const t of ['5++', '120--']) assert.ok(has('expression', t), `two trailing operators: ${t}`);
+  // Every currency in the shared table is exercised by at least one format vector.
+  for (const code of Object.keys(money.currencies).filter((k) => k !== 'description'))
+    assert.ok(money.format.cases.some((c) => c.currency === code), `format vector for ${code}`);
 });
 
 test('hlc vectors: order list is sorted and parse cases round-trip', () => {
