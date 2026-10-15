@@ -1,0 +1,15 @@
+{
+  "name": "@zwallet/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "description": "Canonical client schema, merge groups, .zwallet format, cross-platform vectors and seeds.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --disable-warning=ExperimentalWarning \"test/*.test.mjs\"",
+    "codegen": "node --disable-warning=ExperimentalWarning scripts/codegen.mjs",
+    "codegen:check": "node --disable-warning=ExperimentalWarning scripts/codegen.mjs --check",
+    "vectors": "node scripts/vectors.mjs",
+    "vectors:check": "node scripts/vectors.mjs --check"
+  }
+}
