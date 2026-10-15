@@ -36,14 +36,22 @@ function kotlin({ schemaVersion, formatVersion, tables }) {
   const spec = (t) => {
     const ind = ' '.repeat(20);
     const groups = Object.entries(t.groups)
-      .map(([g, cols]) => `${ind}${kStr(g)} to ${list(cols, ind)},`)
+      .map(([g, cols]) => {
+        const oneLine = `${ind}${kStr(g)} to listOf(${cols.map(kStr).join(', ')}),`;
+        if (oneLine.length <= 120) return oneLine;
+        return `${ind}${kStr(g)} to\n${ind}    ${list(cols, `${ind}    `)},`;
+      })
       .join('\n');
     return [
       `    val ${camel(t.name)}: TableSpec =`,
       `        TableSpec(`,
       `            name = ${kStr(t.name)},`,
-      `            columns = ${list(t.columns, '            ')},`,
-      `            immutable = ${list(t.immutable, '            ')},`,
+      `            columns =
+                ${list(t.columns, '                ')},`,
+      t.immutable.length
+        ? `            immutable =
+                ${list(t.immutable, '                ')},`
+        : `            immutable = emptyList(),`,
       `            groups =`,
       `                linkedMapOf(`,
       groups,

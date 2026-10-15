@@ -33,733 +33,541 @@ object Contracts {
     val profile: TableSpec =
         TableSpec(
             name = "profile",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "display_name",
-                "default_currency",
-                "month_start_day",
-                "my_vpa",
-                "phone_hash_salt",
-                "prefs",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "display_name",
+                    "default_currency",
+                    "month_start_day",
+                    "my_vpa",
+                    "phone_hash_salt",
+                    "prefs",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "display_name",
-                    ),
-                    "currency" to listOf(
-                        "default_currency",
-                    ),
-                    "month_start" to listOf(
-                        "month_start_day",
-                    ),
-                    "vpa" to listOf(
-                        "my_vpa",
-                    ),
-                    "salt" to listOf(
-                        "phone_hash_salt",
-                    ),
-                    "prefs" to listOf(
-                        "prefs",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("display_name"),
+                    "currency" to listOf("default_currency"),
+                    "month_start" to listOf("month_start_day"),
+                    "vpa" to listOf("my_vpa"),
+                    "salt" to listOf("phone_hash_salt"),
+                    "prefs" to listOf("prefs"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val accounts: TableSpec =
         TableSpec(
             name = "accounts",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "name",
-                "kind",
-                "institution",
-                "last4",
-                "color_token",
-                "opening_balance_minor",
-                "currency",
-                "card_cycle_day",
-                "card_due_day",
-                "credit_limit_minor",
-                "balance_snapshot_minor",
-                "balance_snapshot_at",
-                "archived",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "name",
+                    "kind",
+                    "institution",
+                    "last4",
+                    "color_token",
+                    "opening_balance_minor",
+                    "currency",
+                    "card_cycle_day",
+                    "card_due_day",
+                    "credit_limit_minor",
+                    "balance_snapshot_minor",
+                    "balance_snapshot_at",
+                    "archived",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "kind" to listOf(
-                        "kind",
-                    ),
-                    "institution" to listOf(
-                        "institution",
-                        "last4",
-                    ),
-                    "color" to listOf(
-                        "color_token",
-                    ),
-                    "opening" to listOf(
-                        "opening_balance_minor",
-                        "currency",
-                    ),
-                    "card" to listOf(
-                        "card_cycle_day",
-                        "card_due_day",
-                        "credit_limit_minor",
-                    ),
-                    "balance" to listOf(
-                        "balance_snapshot_minor",
-                        "balance_snapshot_at",
-                    ),
-                    "archived" to listOf(
-                        "archived",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("name"),
+                    "kind" to listOf("kind"),
+                    "institution" to listOf("institution", "last4"),
+                    "color" to listOf("color_token"),
+                    "opening" to listOf("opening_balance_minor", "currency"),
+                    "card" to listOf("card_cycle_day", "card_due_day", "credit_limit_minor"),
+                    "balance" to listOf("balance_snapshot_minor", "balance_snapshot_at"),
+                    "archived" to listOf("archived"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val categories: TableSpec =
         TableSpec(
             name = "categories",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "parent_id",
-                "name",
-                "icon",
-                "color_token",
-                "counts_as",
-                "sort_order",
-                "archived",
-                "system_key",
-            ),
-            immutable = listOf(
-                "system_key",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "parent_id",
+                    "name",
+                    "icon",
+                    "color_token",
+                    "counts_as",
+                    "sort_order",
+                    "archived",
+                    "system_key",
+                ),
+            immutable =
+                listOf(
+                    "system_key",
+                ),
             groups =
                 linkedMapOf(
-                    "parent" to listOf(
-                        "parent_id",
-                    ),
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "appearance" to listOf(
-                        "icon",
-                        "color_token",
-                    ),
-                    "counts_as" to listOf(
-                        "counts_as",
-                    ),
-                    "order" to listOf(
-                        "sort_order",
-                    ),
-                    "archived" to listOf(
-                        "archived",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "parent" to listOf("parent_id"),
+                    "name" to listOf("name"),
+                    "appearance" to listOf("icon", "color_token"),
+                    "counts_as" to listOf("counts_as"),
+                    "order" to listOf("sort_order"),
+                    "archived" to listOf("archived"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val merchants: TableSpec =
         TableSpec(
             name = "merchants",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "name",
-                "logo_key",
-                "default_category_id",
-                "aliases",
-                "vpa_patterns",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "name",
+                    "logo_key",
+                    "default_category_id",
+                    "aliases",
+                    "vpa_patterns",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "logo" to listOf(
-                        "logo_key",
-                    ),
-                    "default_category" to listOf(
-                        "default_category_id",
-                    ),
-                    "aliases" to listOf(
-                        "aliases",
-                    ),
-                    "vpa_patterns" to listOf(
-                        "vpa_patterns",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("name"),
+                    "logo" to listOf("logo_key"),
+                    "default_category" to listOf("default_category_id"),
+                    "aliases" to listOf("aliases"),
+                    "vpa_patterns" to listOf("vpa_patterns"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val tags: TableSpec =
         TableSpec(
             name = "tags",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "name",
-                "color_token",
-                "system_key",
-            ),
-            immutable = listOf(
-                "system_key",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "name",
+                    "color_token",
+                    "system_key",
+                ),
+            immutable =
+                listOf(
+                    "system_key",
+                ),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "color" to listOf(
-                        "color_token",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("name"),
+                    "color" to listOf("color_token"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val people: TableSpec =
         TableSpec(
             name = "people",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "display_name",
-                "phone_hash",
-                "vpa",
-                "contact_lookup_key",
-                "avatar_color_token",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "display_name",
+                    "phone_hash",
+                    "vpa",
+                    "contact_lookup_key",
+                    "avatar_color_token",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "display_name",
-                    ),
-                    "phone" to listOf(
-                        "phone_hash",
-                    ),
-                    "vpa" to listOf(
-                        "vpa",
-                    ),
-                    "contact" to listOf(
-                        "contact_lookup_key",
-                    ),
-                    "avatar" to listOf(
-                        "avatar_color_token",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("display_name"),
+                    "phone" to listOf("phone_hash"),
+                    "vpa" to listOf("vpa"),
+                    "contact" to listOf("contact_lookup_key"),
+                    "avatar" to listOf("avatar_color_token"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val rules: TableSpec =
         TableSpec(
             name = "rules",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "name",
-                "priority",
-                "enabled",
-                "origin",
-                "match",
-                "actions",
-            ),
-            immutable = listOf(
-                "origin",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "name",
+                    "priority",
+                    "enabled",
+                    "origin",
+                    "match",
+                    "actions",
+                ),
+            immutable =
+                listOf(
+                    "origin",
+                ),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "priority" to listOf(
-                        "priority",
-                    ),
-                    "enabled" to listOf(
-                        "enabled",
-                    ),
-                    "match" to listOf(
-                        "match",
-                    ),
-                    "actions" to listOf(
-                        "actions",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("name"),
+                    "priority" to listOf("priority"),
+                    "enabled" to listOf("enabled"),
+                    "match" to listOf("match"),
+                    "actions" to listOf("actions"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val budgets: TableSpec =
         TableSpec(
             name = "budgets",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "scope",
-                "category_id",
-                "amount_minor",
-                "currency",
-                "period",
-                "rollover",
-                "starts_on",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "scope",
+                    "category_id",
+                    "amount_minor",
+                    "currency",
+                    "period",
+                    "rollover",
+                    "starts_on",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "scope" to listOf(
-                        "scope",
-                        "category_id",
-                    ),
-                    "amount" to listOf(
-                        "amount_minor",
-                        "currency",
-                    ),
-                    "period" to listOf(
-                        "period",
-                        "starts_on",
-                    ),
-                    "rollover" to listOf(
-                        "rollover",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "scope" to listOf("scope", "category_id"),
+                    "amount" to listOf("amount_minor", "currency"),
+                    "period" to listOf("period", "starts_on"),
+                    "rollover" to listOf("rollover"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val recurringSeries: TableSpec =
         TableSpec(
             name = "recurring_series",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "name",
-                "merchant_id",
-                "category_id",
-                "account_id",
-                "cadence",
-                "interval_days",
-                "expected_amount_minor",
-                "currency",
-                "next_due_on",
-                "status",
-                "origin",
-                "remind_days_before",
-            ),
-            immutable = listOf(
-                "origin",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "name",
+                    "merchant_id",
+                    "category_id",
+                    "account_id",
+                    "cadence",
+                    "interval_days",
+                    "expected_amount_minor",
+                    "currency",
+                    "next_due_on",
+                    "status",
+                    "origin",
+                    "remind_days_before",
+                ),
+            immutable =
+                listOf(
+                    "origin",
+                ),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "merchant" to listOf(
-                        "merchant_id",
-                    ),
-                    "category" to listOf(
-                        "category_id",
-                    ),
-                    "account" to listOf(
-                        "account_id",
-                    ),
-                    "cadence" to listOf(
-                        "cadence",
-                        "interval_days",
-                    ),
-                    "amount" to listOf(
-                        "expected_amount_minor",
-                        "currency",
-                    ),
-                    "next_due" to listOf(
-                        "next_due_on",
-                    ),
-                    "status" to listOf(
-                        "status",
-                    ),
-                    "reminder" to listOf(
-                        "remind_days_before",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("name"),
+                    "merchant" to listOf("merchant_id"),
+                    "category" to listOf("category_id"),
+                    "account" to listOf("account_id"),
+                    "cadence" to listOf("cadence", "interval_days"),
+                    "amount" to listOf("expected_amount_minor", "currency"),
+                    "next_due" to listOf("next_due_on"),
+                    "status" to listOf("status"),
+                    "reminder" to listOf("remind_days_before"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val transactions: TableSpec =
         TableSpec(
             name = "transactions",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "type",
-                "amount_minor",
-                "currency",
-                "original_amount_minor",
-                "original_currency",
-                "occurred_at",
-                "occurred_tz",
-                "account_id",
-                "category_id",
-                "merchant_id",
-                "counterparty_raw",
-                "note",
-                "payment_method",
-                "source",
-                "review_state",
-                "external_ref",
-                "refund_of_id",
-                "transfer_peer_id",
-                "split_group_id",
-                "my_share_minor",
-                "recurring_series_id",
-                "location",
-            ),
-            immutable = listOf(
-                "source",
-                "external_ref",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "type",
+                    "amount_minor",
+                    "currency",
+                    "original_amount_minor",
+                    "original_currency",
+                    "occurred_at",
+                    "occurred_tz",
+                    "account_id",
+                    "category_id",
+                    "merchant_id",
+                    "counterparty_raw",
+                    "note",
+                    "payment_method",
+                    "source",
+                    "review_state",
+                    "external_ref",
+                    "refund_of_id",
+                    "transfer_peer_id",
+                    "split_group_id",
+                    "my_share_minor",
+                    "recurring_series_id",
+                    "location",
+                ),
+            immutable =
+                listOf(
+                    "source",
+                    "external_ref",
+                ),
             groups =
                 linkedMapOf(
-                    "amount" to listOf(
-                        "amount_minor",
-                        "currency",
-                        "original_amount_minor",
-                        "original_currency",
-                    ),
-                    "type" to listOf(
-                        "type",
-                    ),
-                    "when" to listOf(
-                        "occurred_at",
-                        "occurred_tz",
-                    ),
-                    "account" to listOf(
-                        "account_id",
-                    ),
-                    "category" to listOf(
-                        "category_id",
-                    ),
-                    "merchant" to listOf(
-                        "merchant_id",
-                        "counterparty_raw",
-                    ),
-                    "note" to listOf(
-                        "note",
-                    ),
-                    "method" to listOf(
-                        "payment_method",
-                    ),
-                    "review" to listOf(
-                        "review_state",
-                    ),
-                    "links" to listOf(
-                        "refund_of_id",
-                        "transfer_peer_id",
-                        "split_group_id",
-                        "my_share_minor",
-                    ),
-                    "recurring" to listOf(
-                        "recurring_series_id",
-                    ),
-                    "location" to listOf(
-                        "location",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "amount" to listOf("amount_minor", "currency", "original_amount_minor", "original_currency"),
+                    "type" to listOf("type"),
+                    "when" to listOf("occurred_at", "occurred_tz"),
+                    "account" to listOf("account_id"),
+                    "category" to listOf("category_id"),
+                    "merchant" to listOf("merchant_id", "counterparty_raw"),
+                    "note" to listOf("note"),
+                    "method" to listOf("payment_method"),
+                    "review" to listOf("review_state"),
+                    "links" to listOf("refund_of_id", "transfer_peer_id", "split_group_id", "my_share_minor"),
+                    "recurring" to listOf("recurring_series_id"),
+                    "location" to listOf("location"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val transactionTags: TableSpec =
         TableSpec(
             name = "transaction_tags",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "transaction_id",
-                "tag_id",
-            ),
-            immutable = listOf(
-                "transaction_id",
-                "tag_id",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "transaction_id",
+                    "tag_id",
+                ),
+            immutable =
+                listOf(
+                    "transaction_id",
+                    "tag_id",
+                ),
             groups =
                 linkedMapOf(
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val ledgerEntries: TableSpec =
         TableSpec(
             name = "ledger_entries",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "person_id",
-                "kind",
-                "amount_minor",
-                "currency",
-                "occurred_at",
-                "due_on",
-                "note",
-                "transaction_id",
-                "split_group_id",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "person_id",
+                    "kind",
+                    "amount_minor",
+                    "currency",
+                    "occurred_at",
+                    "due_on",
+                    "note",
+                    "transaction_id",
+                    "split_group_id",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "person" to listOf(
-                        "person_id",
-                    ),
-                    "kind" to listOf(
-                        "kind",
-                    ),
-                    "amount" to listOf(
-                        "amount_minor",
-                        "currency",
-                    ),
-                    "when" to listOf(
-                        "occurred_at",
-                    ),
-                    "due" to listOf(
-                        "due_on",
-                    ),
-                    "note" to listOf(
-                        "note",
-                    ),
-                    "links" to listOf(
-                        "transaction_id",
-                        "split_group_id",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "person" to listOf("person_id"),
+                    "kind" to listOf("kind"),
+                    "amount" to listOf("amount_minor", "currency"),
+                    "when" to listOf("occurred_at"),
+                    "due" to listOf("due_on"),
+                    "note" to listOf("note"),
+                    "links" to listOf("transaction_id", "split_group_id"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val upcomingItems: TableSpec =
         TableSpec(
             name = "upcoming_items",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "kind",
-                "title",
-                "amount_minor",
-                "currency",
-                "due_on",
-                "account_id",
-                "recurring_series_id",
-                "ledger_entry_id",
-                "status",
-                "transaction_id",
-                "source",
-            ),
-            immutable = listOf(
-                "source",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "kind",
+                    "title",
+                    "amount_minor",
+                    "currency",
+                    "due_on",
+                    "account_id",
+                    "recurring_series_id",
+                    "ledger_entry_id",
+                    "status",
+                    "transaction_id",
+                    "source",
+                ),
+            immutable =
+                listOf(
+                    "source",
+                ),
             groups =
                 linkedMapOf(
-                    "kind" to listOf(
-                        "kind",
-                    ),
-                    "title" to listOf(
-                        "title",
-                    ),
-                    "amount" to listOf(
-                        "amount_minor",
-                        "currency",
-                    ),
-                    "due" to listOf(
-                        "due_on",
-                    ),
-                    "links" to listOf(
-                        "account_id",
-                        "recurring_series_id",
-                        "ledger_entry_id",
-                    ),
-                    "status" to listOf(
-                        "status",
-                        "transaction_id",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "kind" to listOf("kind"),
+                    "title" to listOf("title"),
+                    "amount" to listOf("amount_minor", "currency"),
+                    "due" to listOf("due_on"),
+                    "links" to listOf("account_id", "recurring_series_id", "ledger_entry_id"),
+                    "status" to listOf("status", "transaction_id"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val savedFilters: TableSpec =
         TableSpec(
             name = "saved_filters",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "name",
-                "query",
-                "pinned",
-                "sort_order",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "name",
+                    "query",
+                    "pinned",
+                    "sort_order",
+                ),
             immutable = emptyList(),
             groups =
                 linkedMapOf(
-                    "name" to listOf(
-                        "name",
-                    ),
-                    "query" to listOf(
-                        "query",
-                    ),
-                    "pinned" to listOf(
-                        "pinned",
-                    ),
-                    "order" to listOf(
-                        "sort_order",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "name" to listOf("name"),
+                    "query" to listOf("query"),
+                    "pinned" to listOf("pinned"),
+                    "order" to listOf("sort_order"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val insightDismissals: TableSpec =
         TableSpec(
             name = "insight_dismissals",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "rule_id",
-                "subject_key",
-                "dismissed_until",
-            ),
-            immutable = listOf(
-                "rule_id",
-                "subject_key",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "rule_id",
+                    "subject_key",
+                    "dismissed_until",
+                ),
+            immutable =
+                listOf(
+                    "rule_id",
+                    "subject_key",
+                ),
             groups =
                 linkedMapOf(
-                    "until" to listOf(
-                        "dismissed_until",
-                    ),
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "until" to listOf("dismissed_until"),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
     val attachments: TableSpec =
         TableSpec(
             name = "attachments",
-            columns = listOf(
-                "id",
-                "hlc",
-                "field_hlc",
-                "created_at",
-                "updated_at",
-                "deleted_at",
-                "transaction_id",
-                "mime_type",
-                "byte_size",
-                "sha256",
-                "width",
-                "height",
-            ),
-            immutable = listOf(
-                "transaction_id",
-                "mime_type",
-                "byte_size",
-                "sha256",
-                "width",
-                "height",
-            ),
+            columns =
+                listOf(
+                    "id",
+                    "hlc",
+                    "field_hlc",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "transaction_id",
+                    "mime_type",
+                    "byte_size",
+                    "sha256",
+                    "width",
+                    "height",
+                ),
+            immutable =
+                listOf(
+                    "transaction_id",
+                    "mime_type",
+                    "byte_size",
+                    "sha256",
+                    "width",
+                    "height",
+                ),
             groups =
                 linkedMapOf(
-                    "deleted" to listOf(
-                        "deleted_at",
-                    ),
+                    "deleted" to listOf("deleted_at"),
                 ),
         )
 
