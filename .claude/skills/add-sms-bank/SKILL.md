@@ -14,6 +14,6 @@ Add/improve SMS support for: $ARGUMENTS
 3. Add sender ids to `senders.json`; write templates in `templates/<institution>.json` with named
    groups; bump the file version.
 4. Add fixtures to `fixtures/<institution>.jsonl` including negatives.
-5. Run `./gradlew :core:smsparser:test` and `pnpm --filter @zwallet/sms-rules report`. Paste the
+5. Run `./gradlew :core:smsparser:test` (`.\gradlew.bat` in PowerShell) and `pnpm --filter @zwallet/sms-rules report`. Paste the
    before/after accuracy table. 100% on the new institution's fixtures; no regressions elsewhere.
 6. Add merchant/VPA mappings discovered to `packages/contracts/seed/merchants.json` if generic.

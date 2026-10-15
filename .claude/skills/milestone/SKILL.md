@@ -19,6 +19,6 @@ Start milestone **$ARGUMENTS** of zwallet.
    - Risks and the order of merges.
 4. After I approve: create the task list, then execute item by item. After each item run its
    verification and paste evidence. Commit per item (conventional commits).
-5. At the end: run `./scripts/verify.sh all`, then the `code-reviewer`, `perf-battery-auditor`
+5. At the end: run `node scripts/verify.mjs all`, then the `code-reviewer`, `perf-battery-auditor`
    and `design-qa` subagents. Fix blockers, update `docs/CHANGELOG.md`, and report the milestone
    Definition of Done checklist with evidence.

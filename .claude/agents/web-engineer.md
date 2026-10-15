@@ -14,6 +14,6 @@ Working loop:
 2. Keep all DB access in the worker; UI talks to it through typed query hooks.
 3. Every interactive element: keyboard path, focus ring, shortcut registered if applicable.
 4. Tests: Vitest for logic, Playwright flow + screenshot (light/dark).
-5. Run `./scripts/verify.sh web`. Start the dev server and screenshot the page with the
+5. Run `node scripts/verify.mjs web`. Start the dev server and screenshot the page with the
    Playwright MCP; compare with DESIGN.md.
 6. Report files changed, tests, verification output, bundle size delta.

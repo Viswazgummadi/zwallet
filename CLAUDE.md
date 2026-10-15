@@ -19,11 +19,13 @@ budgets) · `docs/DESIGN.md` (tokens, components, every screen, charts) · `docs
 - No new third-party SDKs that phone home. Deps > 500 KB need an ADR.
 - Every UI state (loading/empty/error/offline/populated, light/dark, font 2.0) has a screenshot test.
 
-## Commands (canonical — `scripts/verify.sh` wraps them; created in M0)
+## Commands (canonical — `scripts/verify.mjs` wraps them; created in M0)
+Dev machine is **Windows 11** (CI is Linux) — ADR 0011. Commands below work in Git Bash (Claude's
+Bash tool); in PowerShell use `.\gradlew.bat` and `$env:TEMP`. The repo path has a space: quote it.
 ```bash
-./scripts/verify.sh all            # everything CI runs (use before saying "done")
-./scripts/verify.sh android|web|db|contracts
-# Android (from apps/android)
+node scripts/verify.mjs all            # everything CI runs (use before saying "done")
+node scripts/verify.mjs android|web|db|contracts
+# Android (from apps/android; gradlew.bat on Windows if ./gradlew misbehaves)
 ./gradlew :app:assembleSmsDebug :app:assembleLiteDebug
 ./gradlew testDebugUnitTest :core:smsparser:test
 ./gradlew verifyRoborazziSmsDebug          # screenshot tests; recordRoborazziSmsDebug to update
@@ -33,12 +35,12 @@ pnpm install && pnpm --filter web dev
 pnpm -w turbo run lint typecheck test build
 pnpm --filter web e2e
 # Supabase
-supabase start && supabase db reset && supabase test db
+supabase start && supabase db reset && supabase test db   # needs Docker Desktop (WSL2) running
 # Contracts & SMS rules
 pnpm --filter @zwallet/contracts golden     # regenerate expected/ (never hand-edit)
 pnpm --filter @zwallet/sms-rules report     # parser accuracy per institution
 # Device checks
-adb exec-out screencap -p > /tmp/zw.png    # then Read the PNG to verify UI
+adb exec-out screencap -p > "${TEMP:-/tmp}/zw.png"   # or the session scratchpad; then Read the PNG
 ```
 
 ## Workflow

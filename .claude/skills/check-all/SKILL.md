@@ -3,7 +3,7 @@ name: check-all
 description: Run every zwallet quality gate and summarize pass/fail with evidence. Use before declaring work done or opening a PR.
 ---
 
-1. Run `./scripts/verify.sh all` (if it doesn't exist yet, run each track's lint/typecheck/test/build
+1. Run `node scripts/verify.mjs all` (if it doesn't exist yet, run each track's lint/typecheck/test/build
    commands from CLAUDE.md). Capture the summary lines, not full logs.
 2. If a device is attached: install the sms debug build and run a smoke flow (open app, quick-add
    ₹1, delete it) via adb; screenshot Home.

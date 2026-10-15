@@ -16,4 +16,4 @@ Use the `backend-sync-engineer` subagent for steps 1–4, then implement client 
 5. Android: Room entity + `Migration(n, n+1)` + migration test; web: worker migration + test.
 6. Sync: both engines handle the new fields; run sync property tests.
 7. Backfill strategy for existing rows documented in the PR.
-8. `./scripts/verify.sh all`, then `code-reviewer` subagent.
+8. `node scripts/verify.mjs all`, then `code-reviewer` subagent.

@@ -14,6 +14,6 @@ For any change:
 3. Update both client schemas/migrations (or list precisely what the android/web engineers must change).
 4. Tests: pgTAP (RLS isolation, RPC behavior), sync property tests for convergence, idempotence,
    and no-lost-writes (ARCH §5.4).
-5. Run `./scripts/verify.sh db contracts`.
+5. Run `node scripts/verify.mjs db contracts`.
 Think about: clock skew, partial batch failure, replay, tombstone purge horizon, offline for weeks,
 two devices editing the same row. Explain how each is handled in the PR description.

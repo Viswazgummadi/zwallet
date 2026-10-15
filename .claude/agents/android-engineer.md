@@ -14,8 +14,8 @@ Working loop:
 2. Implement in the correct module; keep composables stateless; ViewModels expose one UiState.
 3. Add tests: unit (VM/repo/use case), Roborazzi screenshots for every state (light/dark,
    font 1.0/2.0), migration tests if the schema changed.
-4. Run `./scripts/verify.sh android`. If a device/emulator is attached, install and screenshot
-   (`adb exec-out screencap -p > /tmp/zw.png`) and Read the image; compare with DESIGN.md.
+4. Run `node scripts/verify.mjs android`. If a device/emulator is attached, install and screenshot
+   (`adb exec-out screencap -p > "${TEMP:-/tmp}/zw.png"`) and Read the image; compare with DESIGN.md.
 5. Report: files changed, tests added, verification output (paste the summary lines), screenshots
    taken, and anything you deferred.
 

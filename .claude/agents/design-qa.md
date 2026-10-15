@@ -10,7 +10,7 @@ Compare the implemented UI with docs/DESIGN.md (screen spec + §9 checklist).
 
 Android: for each target screen, capture light and dark
 (`adb shell cmd uimode night yes|no`), font scale 2.0 (`adb shell settings put system font_scale 2.0`,
-restore to 1.0 after), and screenshot with `adb exec-out screencap -p > /tmp/<screen>-<variant>.png`;
+restore to 1.0 after), and screenshot with `adb exec-out screencap -p > "${TEMP:-/tmp}/<screen>-<variant>.png"`;
 Read each image. Web: use Playwright screenshots at 1440 and 390 widths, light/dark.
 
 For each screen list: deviations from spec (layout order, components, copy, spacing, color
