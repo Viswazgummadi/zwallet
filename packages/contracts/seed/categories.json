@@ -1,0 +1,696 @@
+{
+  "version": 1,
+  "description": "Default category taxonomy (SPEC §6.1). Two levels: groups (parent_id NULL) and their categories. ids = UUIDv8(\"seed:v1|\" + system_key), filled by scripts/vectors.mjs, so independently seeded copies merge into one row per category (ADR 0013). Seed rows carry hlc = seed_hlc (the minimum HLC) on every group so any user edit wins a merge.",
+  "seed_hlc": "0000000000000-0000-00000000",
+  "groups": [
+    {
+      "system_key": "food",
+      "id": "69970042-8ce1-8e0f-b49d-08cfd20a7ee6",
+      "name": "Food & Dining",
+      "icon": "restaurant",
+      "color_token": "category.food",
+      "counts_as": "spend",
+      "sort_order": 0,
+      "categories": [
+        {
+          "system_key": "food.restaurants",
+          "id": "eef6e12c-d187-84c9-b9a2-1e833393f66e",
+          "name": "Restaurants",
+          "icon": "restaurant",
+          "color_token": "category.food",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "food.delivery",
+          "id": "7a0fdd1a-011e-81e4-b574-4ca6cb46bd24",
+          "name": "Food delivery",
+          "icon": "delivery_dining",
+          "color_token": "category.food",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "food.cafes",
+          "id": "913047a9-4627-8b8b-be36-54a1b4671ce1",
+          "name": "Cafés & snacks",
+          "icon": "local_cafe",
+          "color_token": "category.food",
+          "counts_as": "spend",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "groceries",
+      "id": "0308772a-263a-8d0d-97d6-46332419b326",
+      "name": "Groceries",
+      "icon": "local_grocery_store",
+      "color_token": "category.groceries",
+      "counts_as": "spend",
+      "sort_order": 10,
+      "categories": [
+        {
+          "system_key": "groceries.groceries",
+          "id": "82a42705-9d5a-8b79-8f64-0fd9e2377051",
+          "name": "Groceries",
+          "icon": "local_grocery_store",
+          "color_token": "category.groceries",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "groceries.quick_commerce",
+          "id": "c4855778-aa20-87a4-b7f3-b0f3b7d427e8",
+          "name": "Quick commerce",
+          "icon": "shopping_basket",
+          "color_token": "category.groceries",
+          "counts_as": "spend",
+          "sort_order": 10
+        }
+      ]
+    },
+    {
+      "system_key": "transport",
+      "id": "aef3eaf6-7af1-887d-9b97-1fae782298a6",
+      "name": "Transport",
+      "icon": "directions_car",
+      "color_token": "category.transport",
+      "counts_as": "spend",
+      "sort_order": 20,
+      "categories": [
+        {
+          "system_key": "transport.fuel",
+          "id": "48369893-a613-8662-a508-18146ffd5045",
+          "name": "Fuel",
+          "icon": "local_gas_station",
+          "color_token": "category.transport",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "transport.cab",
+          "id": "4ef8208a-1254-8643-b989-996481c894d6",
+          "name": "Cab & auto",
+          "icon": "local_taxi",
+          "color_token": "category.transport",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "transport.metro_bus",
+          "id": "ea66192e-c315-800f-965f-e76b872682c1",
+          "name": "Metro & bus",
+          "icon": "directions_bus",
+          "color_token": "category.transport",
+          "counts_as": "spend",
+          "sort_order": 20
+        },
+        {
+          "system_key": "transport.train",
+          "id": "f23b592b-cd1f-885a-964b-91362d223e3a",
+          "name": "Train",
+          "icon": "train",
+          "color_token": "category.transport",
+          "counts_as": "spend",
+          "sort_order": 30
+        },
+        {
+          "system_key": "transport.parking_tolls",
+          "id": "2beb12cb-9a29-8b80-9e98-667231a3f0d8",
+          "name": "Parking & tolls",
+          "icon": "local_parking",
+          "color_token": "category.transport",
+          "counts_as": "spend",
+          "sort_order": 40
+        },
+        {
+          "system_key": "transport.vehicle_service",
+          "id": "f63cc535-3c12-803e-9e8e-23f9c16f296f",
+          "name": "Vehicle service",
+          "icon": "car_repair",
+          "color_token": "category.transport",
+          "counts_as": "spend",
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "system_key": "housing",
+      "id": "2657f5e7-6d62-86f5-885c-a23bfa6cb791",
+      "name": "Housing",
+      "icon": "home",
+      "color_token": "category.housing",
+      "counts_as": "spend",
+      "sort_order": 30,
+      "categories": [
+        {
+          "system_key": "housing.rent",
+          "id": "e9f75250-bf30-8946-a1c6-882133aa608a",
+          "name": "Rent / PG",
+          "icon": "house",
+          "color_token": "category.housing",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "housing.maintenance",
+          "id": "bf6b758c-826f-8b2e-89a1-a83d31860229",
+          "name": "Maintenance",
+          "icon": "handyman",
+          "color_token": "category.housing",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "housing.furniture",
+          "id": "eab2d41d-0f38-8bd2-8df4-78e2e746e7a5",
+          "name": "Furniture & home",
+          "icon": "chair",
+          "color_token": "category.housing",
+          "counts_as": "spend",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "bills",
+      "id": "3fbe1e50-7018-83c9-8314-b2e3f4d34bf1",
+      "name": "Bills & Utilities",
+      "icon": "receipt_long",
+      "color_token": "category.bills",
+      "counts_as": "spend",
+      "sort_order": 40,
+      "categories": [
+        {
+          "system_key": "bills.electricity",
+          "id": "7372d87d-ed5a-802f-bb9e-00773f938a60",
+          "name": "Electricity",
+          "icon": "bolt",
+          "color_token": "category.bills",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "bills.mobile",
+          "id": "9a0eed7f-23da-80b7-bae8-dacd2aedf9ff",
+          "name": "Mobile recharge",
+          "icon": "smartphone",
+          "color_token": "category.bills",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "bills.internet",
+          "id": "1c6c1fa8-a02f-878c-bedc-13caf681d2a7",
+          "name": "Internet",
+          "icon": "wifi",
+          "color_token": "category.bills",
+          "counts_as": "spend",
+          "sort_order": 20
+        },
+        {
+          "system_key": "bills.dth_ott",
+          "id": "f00d5d49-754c-814f-8c44-adbf8de01032",
+          "name": "DTH/OTT",
+          "icon": "live_tv",
+          "color_token": "category.bills",
+          "counts_as": "spend",
+          "sort_order": 30
+        },
+        {
+          "system_key": "bills.gas",
+          "id": "3c01e353-00ec-812d-9c42-1da48bd32a49",
+          "name": "Gas",
+          "icon": "propane_tank",
+          "color_token": "category.bills",
+          "counts_as": "spend",
+          "sort_order": 40
+        },
+        {
+          "system_key": "bills.water",
+          "id": "5d9d62ac-c530-8f9a-9feb-e80eb26d2f2d",
+          "name": "Water",
+          "icon": "water_drop",
+          "color_token": "category.bills",
+          "counts_as": "spend",
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "system_key": "shopping",
+      "id": "8344d1f0-3480-8098-8de2-af3d26b7dfc3",
+      "name": "Shopping",
+      "icon": "shopping_bag",
+      "color_token": "category.shopping",
+      "counts_as": "spend",
+      "sort_order": 50,
+      "categories": [
+        {
+          "system_key": "shopping.online",
+          "id": "b6d09b8f-7f9e-8aa0-bb4c-9cd6492cb8dd",
+          "name": "Online shopping",
+          "icon": "local_shipping",
+          "color_token": "category.shopping",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "shopping.clothing",
+          "id": "5a93f252-1cf2-85be-b05b-810dd37d69ea",
+          "name": "Clothing",
+          "icon": "checkroom",
+          "color_token": "category.shopping",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "shopping.electronics",
+          "id": "6607579d-4720-85d4-9c8f-3969dbd8c069",
+          "name": "Electronics",
+          "icon": "devices",
+          "color_token": "category.shopping",
+          "counts_as": "spend",
+          "sort_order": 20
+        },
+        {
+          "system_key": "shopping.personal_items",
+          "id": "9f0ee47b-7f5b-859b-be57-e6bf99f37c5d",
+          "name": "Personal items",
+          "icon": "inventory_2",
+          "color_token": "category.shopping",
+          "counts_as": "spend",
+          "sort_order": 30
+        },
+        {
+          "system_key": "shopping.small_upi",
+          "id": "5d2b9135-c72a-83f2-acad-9b10957a4632",
+          "name": "Small UPI payments",
+          "icon": "account_balance_wallet",
+          "color_token": "category.shopping",
+          "counts_as": "spend",
+          "sort_order": 40
+        }
+      ]
+    },
+    {
+      "system_key": "health",
+      "id": "7270995f-40cb-837f-ae5a-795a99890089",
+      "name": "Health",
+      "icon": "health_and_safety",
+      "color_token": "category.health",
+      "counts_as": "spend",
+      "sort_order": 60,
+      "categories": [
+        {
+          "system_key": "health.pharmacy",
+          "id": "3209e334-22f8-8d1a-a928-ce67730aea51",
+          "name": "Pharmacy",
+          "icon": "medication",
+          "color_token": "category.health",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "health.doctor_lab",
+          "id": "be95f78d-7f0f-88e3-85c4-cdbc11931f4c",
+          "name": "Doctor & lab",
+          "icon": "stethoscope",
+          "color_token": "category.health",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "health.fitness",
+          "id": "5b7294d7-f195-8a4f-b9b6-095fdc0d82fb",
+          "name": "Fitness & gym",
+          "icon": "fitness_center",
+          "color_token": "category.health",
+          "counts_as": "spend",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "entertainment",
+      "id": "dfd56b24-b65b-862a-9fa8-a7a68b8a3eee",
+      "name": "Entertainment",
+      "icon": "theaters",
+      "color_token": "category.entertainment",
+      "counts_as": "spend",
+      "sort_order": 70,
+      "categories": [
+        {
+          "system_key": "entertainment.movies_events",
+          "id": "643bfacf-9cae-80d0-ad42-a2fa70710477",
+          "name": "Movies & events",
+          "icon": "movie",
+          "color_token": "category.entertainment",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "entertainment.subscriptions",
+          "id": "3571accc-4a33-8106-921c-d1599e68b0a2",
+          "name": "Subscriptions",
+          "icon": "subscriptions",
+          "color_token": "category.entertainment",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "entertainment.games",
+          "id": "ea885092-6c28-85ad-9f53-bb61228636ba",
+          "name": "Games",
+          "icon": "sports_esports",
+          "color_token": "category.entertainment",
+          "counts_as": "spend",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "travel",
+      "id": "cf2bb2f7-40d6-80c5-9a14-fe6879ab6455",
+      "name": "Travel",
+      "icon": "flight",
+      "color_token": "category.travel",
+      "counts_as": "spend",
+      "sort_order": 80,
+      "categories": [
+        {
+          "system_key": "travel.flights",
+          "id": "8e109217-08fc-8143-b16f-668bfb668019",
+          "name": "Flights",
+          "icon": "flight_takeoff",
+          "color_token": "category.travel",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "travel.hotels",
+          "id": "380bf9ef-d620-8ea4-801e-318bf9d5b046",
+          "name": "Hotels",
+          "icon": "hotel",
+          "color_token": "category.travel",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "travel.trips",
+          "id": "6f66ed57-d19a-8869-b1e3-acaf89f75b2b",
+          "name": "Trips",
+          "icon": "luggage",
+          "color_token": "category.travel",
+          "counts_as": "spend",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "education",
+      "id": "f70e2a74-1936-8984-9e11-9a3589a8eda7",
+      "name": "Education",
+      "icon": "school",
+      "color_token": "category.education",
+      "counts_as": "spend",
+      "sort_order": 90,
+      "categories": [
+        {
+          "system_key": "education.courses",
+          "id": "7398c234-abf4-89b7-88e1-be5a62cf5b9b",
+          "name": "Courses",
+          "icon": "school",
+          "color_token": "category.education",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "education.books",
+          "id": "e3074a36-2d7c-83e6-8da4-addf10cc780f",
+          "name": "Books",
+          "icon": "menu_book",
+          "color_token": "category.education",
+          "counts_as": "spend",
+          "sort_order": 10
+        }
+      ]
+    },
+    {
+      "system_key": "personal_care",
+      "id": "9caa75a5-28ee-8fe0-a4cd-02bab99d9814",
+      "name": "Personal care",
+      "icon": "spa",
+      "color_token": "category.personal_care",
+      "counts_as": "spend",
+      "sort_order": 100,
+      "categories": [
+        {
+          "system_key": "personal_care.personal_care",
+          "id": "53ac0112-13c4-8ea1-b198-fef670ea1ad4",
+          "name": "Personal care",
+          "icon": "spa",
+          "color_token": "category.personal_care",
+          "counts_as": "spend",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "system_key": "family",
+      "id": "3044fb02-70e2-8176-bccb-eaf2097640e0",
+      "name": "Family & gifts",
+      "icon": "family_restroom",
+      "color_token": "category.family",
+      "counts_as": "spend",
+      "sort_order": 110,
+      "categories": [
+        {
+          "system_key": "family.support",
+          "id": "3c16a105-039f-87ae-a322-4de1fa45e868",
+          "name": "Family support",
+          "icon": "family_restroom",
+          "color_token": "category.family",
+          "counts_as": "excluded",
+          "sort_order": 0
+        },
+        {
+          "system_key": "family.gifts",
+          "id": "0707a0a4-5a56-8ad0-b95c-8021323787f7",
+          "name": "Gifts",
+          "icon": "redeem",
+          "color_token": "category.family",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "family.donations",
+          "id": "fd3518ef-2a90-8639-907c-bc259970eb68",
+          "name": "Donations",
+          "icon": "volunteer_activism",
+          "color_token": "category.family",
+          "counts_as": "spend",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "finance",
+      "id": "c8ec9bf7-c2ff-8608-89a5-1e9b5192a6cf",
+      "name": "Finance",
+      "icon": "account_balance",
+      "color_token": "category.finance",
+      "counts_as": "spend",
+      "sort_order": 120,
+      "categories": [
+        {
+          "system_key": "finance.emi_loans",
+          "id": "452cf2fa-7434-88cd-88dd-e88050febf27",
+          "name": "EMI & loans",
+          "icon": "credit_score",
+          "color_token": "category.finance",
+          "counts_as": "excluded",
+          "sort_order": 0
+        },
+        {
+          "system_key": "finance.insurance",
+          "id": "1e8838f5-a610-8e81-aef2-4af7a857b20f",
+          "name": "Insurance",
+          "icon": "shield",
+          "color_token": "category.finance",
+          "counts_as": "spend",
+          "sort_order": 10
+        },
+        {
+          "system_key": "finance.fees",
+          "id": "9a024ea9-b4ff-87ec-bc1a-244118a0e969",
+          "name": "Fees & charges",
+          "icon": "request_quote",
+          "color_token": "category.finance",
+          "counts_as": "spend",
+          "sort_order": 20
+        },
+        {
+          "system_key": "finance.taxes",
+          "id": "73a4c1f3-95ea-8a4d-bdf7-705a2ab9e947",
+          "name": "Taxes",
+          "icon": "gavel",
+          "color_token": "category.finance",
+          "counts_as": "spend",
+          "sort_order": 30
+        }
+      ]
+    },
+    {
+      "system_key": "investments",
+      "id": "507fd2ae-bfc9-8e17-9b9b-cba7e3f0dd74",
+      "name": "Investments",
+      "icon": "trending_up",
+      "color_token": "category.investments",
+      "counts_as": "savings",
+      "sort_order": 130,
+      "categories": [
+        {
+          "system_key": "investments.sip_mf",
+          "id": "10e7d523-771c-8feb-912a-d7792c9e15aa",
+          "name": "SIP / mutual funds",
+          "icon": "savings",
+          "color_token": "category.investments",
+          "counts_as": "savings",
+          "sort_order": 0
+        },
+        {
+          "system_key": "investments.stocks",
+          "id": "c8985c9f-1c03-81ec-96dd-621e00cec048",
+          "name": "Stocks",
+          "icon": "candlestick_chart",
+          "color_token": "category.investments",
+          "counts_as": "savings",
+          "sort_order": 10
+        },
+        {
+          "system_key": "investments.fd_rd",
+          "id": "0e8a3888-2971-8416-839c-ffe2f33df5ff",
+          "name": "FD / RD",
+          "icon": "account_balance",
+          "color_token": "category.investments",
+          "counts_as": "savings",
+          "sort_order": 20
+        }
+      ]
+    },
+    {
+      "system_key": "income",
+      "id": "05b3776e-47c1-8bca-8d7f-3cf59560cb1e",
+      "name": "Income",
+      "icon": "payments",
+      "color_token": "category.income",
+      "counts_as": "income",
+      "sort_order": 140,
+      "categories": [
+        {
+          "system_key": "income.salary",
+          "id": "22f8afde-9440-8858-bb0f-606b4caa34c8",
+          "name": "Salary",
+          "icon": "work",
+          "color_token": "category.income",
+          "counts_as": "income",
+          "sort_order": 0
+        },
+        {
+          "system_key": "income.freelance",
+          "id": "eefd2aed-1460-8f5b-9e68-91f384a7bb7e",
+          "name": "Freelance",
+          "icon": "laptop_mac",
+          "color_token": "category.income",
+          "counts_as": "income",
+          "sort_order": 10
+        },
+        {
+          "system_key": "income.interest",
+          "id": "81e1850b-0671-84bf-8db1-a55ea0e4cbe8",
+          "name": "Interest",
+          "icon": "percent",
+          "color_token": "category.income",
+          "counts_as": "income",
+          "sort_order": 20
+        },
+        {
+          "system_key": "income.cashback",
+          "id": "c044fe87-e608-8afb-9bd2-53e54e7268ba",
+          "name": "Cashback & rewards",
+          "icon": "loyalty",
+          "color_token": "category.income",
+          "counts_as": "income",
+          "sort_order": 30
+        },
+        {
+          "system_key": "income.reimbursement",
+          "id": "bd7bb16e-50ff-86d0-9209-7e665e7aee71",
+          "name": "Reimbursement",
+          "icon": "assignment_return",
+          "color_token": "category.income",
+          "counts_as": "excluded",
+          "sort_order": 40
+        },
+        {
+          "system_key": "income.other",
+          "id": "6d62c281-0f8d-824a-8f21-ee40cb14ad57",
+          "name": "Other income",
+          "icon": "add_card",
+          "color_token": "category.income",
+          "counts_as": "income",
+          "sort_order": 50
+        }
+      ]
+    },
+    {
+      "system_key": "system",
+      "id": "56db4ae7-a923-87cd-b36b-62b86c27ce1f",
+      "name": "System",
+      "icon": "settings",
+      "color_token": "category.system",
+      "counts_as": "excluded",
+      "sort_order": 150,
+      "categories": [
+        {
+          "system_key": "system.uncategorized",
+          "id": "a6e8af3d-3a08-88ab-b185-9a0e35d4af6a",
+          "name": "Uncategorized",
+          "icon": "help",
+          "color_token": "category.system",
+          "counts_as": "spend",
+          "sort_order": 0
+        },
+        {
+          "system_key": "system.transfer",
+          "id": "3b9856f5-52b8-8ff3-aed7-662859122a38",
+          "name": "Transfer",
+          "icon": "sync_alt",
+          "color_token": "category.system",
+          "counts_as": "excluded",
+          "sort_order": 10
+        },
+        {
+          "system_key": "system.refund",
+          "id": "f3a7a4c7-5bcb-8626-a1fb-41ef3a4e14d7",
+          "name": "Refund",
+          "icon": "undo",
+          "color_token": "category.system",
+          "counts_as": "spend",
+          "sort_order": 20
+        },
+        {
+          "system_key": "system.lending",
+          "id": "8680cab2-8366-85f2-9c78-45ed2d52a0a7",
+          "name": "Lending",
+          "icon": "handshake",
+          "color_token": "category.system",
+          "counts_as": "excluded",
+          "sort_order": 30
+        }
+      ]
+    }
+  ]
+}

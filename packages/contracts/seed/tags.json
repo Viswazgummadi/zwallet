@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "description": "System tags. ids = UUIDv8(\"seed:v1|\" + system_key), as for categories (different table, so no clash). `reimbursable` marks work expenses excluded from Spend (SPEC §9.2).",
+  "seed_hlc": "0000000000000-0000-00000000",
+  "tags": [
+    {
+      "system_key": "reimbursable",
+      "id": "ab16cd15-412a-8857-9bde-6aac3913633c",
+      "name": "Reimbursable",
+      "color_token": null
+    }
+  ]
+}
