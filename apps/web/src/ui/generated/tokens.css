@@ -8,6 +8,7 @@
   --zw-color-surface: #FCFCFB;
   --zw-color-surface-raised: #FFFFFF;
   --zw-color-surface-sunken: #F0EFEC;
+  --zw-color-skeleton: #D9D8D0;
   --zw-color-ink-primary: #0B0B0B;
   --zw-color-ink-secondary: #52514E;
   --zw-color-ink-muted: #6E6C67;
@@ -192,6 +193,7 @@
     --zw-color-surface: #121417;
     --zw-color-surface-raised: #1A1D21;
     --zw-color-surface-sunken: #0E1012;
+    --zw-color-skeleton: #292C32;
     --zw-color-ink-primary: #F0EFEC;
     --zw-color-ink-secondary: #C3C2B7;
     --zw-color-ink-muted: #9A988F;
@@ -274,6 +276,7 @@
     --zw-color-page: #000000;
     --zw-color-surface: #000000;
     --zw-color-surface-raised: #101113;
+    --zw-color-skeleton: #202226;
     --zw-category-food-container: #091625;
     --zw-category-groceries-container: #041912;
     --zw-category-transport-container: #230E06;
@@ -301,6 +304,7 @@
   --zw-color-surface: #121417;
   --zw-color-surface-raised: #1A1D21;
   --zw-color-surface-sunken: #0E1012;
+  --zw-color-skeleton: #292C32;
   --zw-color-ink-primary: #F0EFEC;
   --zw-color-ink-secondary: #C3C2B7;
   --zw-color-ink-muted: #9A988F;
@@ -384,6 +388,7 @@
   --zw-color-page: #000000;
   --zw-color-surface: #000000;
   --zw-color-surface-raised: #101113;
+  --zw-color-skeleton: #202226;
   --zw-category-food-container: #091625;
   --zw-category-groceries-container: #041912;
   --zw-category-transport-container: #230E06;
@@ -410,6 +415,7 @@
   --color-surface: var(--zw-color-surface);
   --color-surface-raised: var(--zw-color-surface-raised);
   --color-surface-sunken: var(--zw-color-surface-sunken);
+  --color-skeleton: var(--zw-color-skeleton);
   --color-ink-primary: var(--zw-color-ink-primary);
   --color-ink-secondary: var(--zw-color-ink-secondary);
   --color-ink-muted: var(--zw-color-ink-muted);

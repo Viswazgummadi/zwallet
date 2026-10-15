@@ -39,6 +39,19 @@ for (const mode of MODES) {
     }
   });
 
+  test(`${mode}: interactive boundaries reach 3:1 and skeletons stay visible`, () => {
+    // Button/field outlines use `outline` (WCAG 1.4.11); `hairline` is for dividers only.
+    for (const bg of SURFACES) {
+      const r = contrast(p.m3.outline, p.neutrals[bg]);
+      assert.ok(r >= 3, `outline on ${bg} = ${r.toFixed(2)}`);
+    }
+    // Loading placeholders must read as shapes on the page in every mode (DESIGN §4 Skeleton).
+    for (const bg of ['page', 'surface']) {
+      const r = contrast(p.neutrals.skeleton, p.neutrals[bg]);
+      assert.ok(r >= 1.25, `skeleton on ${bg} = ${r.toFixed(2)}`);
+    }
+  });
+
   test(`${mode}: every category glyph reaches ${GLYPH_MIN_CONTRAST}:1 on its container`, () => {
     for (const [group, glyph] of Object.entries(p.categoryGlyph)) {
       const r = contrast(glyph, p.categoryContainer[group]);

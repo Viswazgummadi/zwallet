@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MODES, palette, shared, tokens, type Palette } from './resolve.ts';
 import { iconOutputs, pathData } from './icons.ts';
+import { noticeOutputs } from './notices.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const KT = path.join(
@@ -413,6 +414,7 @@ const outputs: Array<[string, string]> = [
   [CSS, css()],
   [TS, ts()],
   ...iconOutputs(ROOT, header),
+  ...noticeOutputs(ROOT),
   ...androidXml(),
 ];
 const check = process.argv.includes('--check');
