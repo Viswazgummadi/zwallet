@@ -1,0 +1,20 @@
+{
+  "name": "zwallet",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "author": "Viswaz Gummadi",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "verify": "node scripts/verify.mjs all",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.9.10",
+    "turbo": "2.11.8",
+    "typescript": "6.0.3"
+  }
+}

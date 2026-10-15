@@ -29,3 +29,7 @@ supabase/.branches/
 supabase/.temp/
 # OS
 .DS_Store
+
+# zwallet
+*.log
+.vite/

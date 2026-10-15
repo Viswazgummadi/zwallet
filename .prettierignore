@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+**/generated/**
+packages/contracts/expected/
+packages/contracts/fixtures/
+apps/android/
+dist/
+coverage/
+docs/
+*.md
