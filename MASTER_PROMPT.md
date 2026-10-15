@@ -71,6 +71,10 @@ multi-currency and multi-user data isolation anyway.
   permissions; manual + paste-to-import). Same codebase, flavor-gated module.
 - Contacts: use the **system contact picker** (no `READ_CONTACTS` needed) by default; optional
   full-contacts search behind an explicit opt-in.
+- **Dev environment:** the owner develops on **Windows 11** (CI is Linux). Canonical gate runner is
+  `node scripts/verify.mjs`; use `gradlew.bat` / `.\gradlew.bat` locally, the OS temp dir instead of
+  `/tmp`, and quote paths (the repo path contains a space). Hooks are bash, run via Git Bash.
+  Local Supabase runs on Docker Desktop (WSL2). See ADR 0011.
 
 ---
 
@@ -137,6 +141,8 @@ If code and docs disagree, **stop and ask** which one is right, then fix the oth
 ---
 
 ## 7. First session instructions (do this now)
+
+I'm developing on Windows 11, not Linux. Adapt scripts and commands accordingly.
 
 1. Read `docs/SPEC.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md` fully.
 2. Interview the owner (AskUserQuestion) about everything in `docs/OPEN_QUESTIONS.md` plus anything

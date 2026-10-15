@@ -92,13 +92,20 @@ zwallet/
 |---|---|---|
 | `id` | `uuid` / `TEXT` | UUIDv7, generated on client |
 | `user_id` | `uuid` / `TEXT` | `auth.uid()`; RLS key |
-| `hlc` | `text` / `TEXT` | Hybrid logical clock of last client write — LWW key |
+| `hlc` | `text` / `TEXT` | Hybrid logical clock of last client write = max over `field_hlc` |
+| `field_hlc` | `jsonb not null default '{}'` / `TEXT` (JSON) | `{merge_group: hlc}` — per-field-group LWW key (ADR 0009) |
 | `created_at`, `updated_at` | `timestamptz` / `INTEGER` (epoch ms) | `updated_at` set by server trigger |
 | `deleted_at` | `timestamptz null` / `INTEGER null` | Tombstone |
 | `server_version` | `bigint` / `INTEGER` | From global sequence, set by trigger on every write |
 | (client only) `dirty` | — / `INTEGER` 0/1 | Pending push |
 
 Money: `amount_minor bigint not null check (amount_minor > 0)`, `currency char(3) default 'INR'`.
+
+Ids: UUIDv7 for client-created rows; **UUIDv8 derived from the SMS fingerprint** for SMS-sourced
+transactions (ADR 0010).
+
+Every table in the abridged schema below also gets `field_hlc jsonb not null default '{}'`
+(omitted from the listing for brevity — the M0 migration includes it everywhere).
 
 ### 4.2 Canonical Postgres schema (first migration, abridged — implement fully in M0)
 
@@ -162,7 +169,7 @@ create index on transactions (user_id, occurred_at desc) where deleted_at is nul
 create index on transactions (user_id, server_version);
 create unique index on transactions (user_id, external_ref, account_id) where external_ref is not null and deleted_at is null;
 
-create table tags (id uuid primary key, user_id uuid not null, name text not null, color_token text, /* sync cols */ hlc text not null, created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz, server_version bigint not null default nextval('sync_version_seq'));
+create table tags (id uuid primary key, user_id uuid not null, name text not null, color_token text, system_key text /* e.g. 'reimbursable' */, /* sync cols */ hlc text not null, created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz, server_version bigint not null default nextval('sync_version_seq'));
 create table transaction_tags (id uuid primary key, user_id uuid not null, transaction_id uuid not null references transactions, tag_id uuid not null references tags, /* sync cols */ hlc text not null, created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz, server_version bigint not null default nextval('sync_version_seq'));
 
 create table people (
@@ -198,6 +205,19 @@ end $$;
 -- RLS (repeat per table):
 alter table transactions enable row level security;
 create policy own_rows on transactions using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Merge groups for per-field LWW (ADR 0009); mirrors packages/contracts/schema/*.json x-merge-groups
+create table sync_field_groups (
+  table_name text not null, group_name text not null, columns text[] not null,
+  primary key (table_name, group_name)
+);
+
+-- One row per user, bumped by a statement-level trigger after pushes; clients subscribe via
+-- Realtime (foreground only) as a "something changed" ping.
+create table sync_cursors (
+  user_id uuid primary key references auth.users on delete cascade,
+  version bigint not null default 0, updated_at timestamptz not null default now()
+);
 ```
 
 ### 4.3 Client SQLite schema
@@ -225,24 +245,36 @@ row, `last = max(last, row.hlc)` (advance). Node id = random per install, stored
 
 ### 5.2 RPCs (Postgres functions, `security invoker`, RLS applies)
 ```
-sync_push(p_changes jsonb) returns jsonb
-  -- p_changes: [{ "table": "transactions", "row": {...full row incl. hlc, deleted_at} }, ...] (≤ 500)
-  -- For each: upsert where (existing is null) or (incoming.hlc > existing.hlc).
-  -- Returns: { "applied": [ids], "stale": [{table, row: current_server_row}] , "server_now": ts }
+sync_push(p_changes jsonb, p_schema_version int) returns jsonb
+  -- p_changes: [{ "table": "transactions", "row": {...full row incl. hlc, field_hlc, deleted_at} }, ...] (≤ 500)
+  -- For each: insert if absent; else per merge group g (sync_field_groups):
+  --   take incoming columns of g iff incoming.field_hlc[g] > existing.field_hlc[g] (missing = '').
+  --   field_hlc := per-group max; hlc := max(field_hlc). Tombstone sticky: only group 'deleted'
+  --   can change deleted_at.
+  -- Returns: { "applied": [ids], "merged": [{table, row: post_merge_server_row}],
+  --            "rejected": [{table, id, reason}], "server_now": ts }
 
 sync_pull(p_since bigint, p_limit int default 1000) returns jsonb
   -- Returns rows from all synced tables with server_version > p_since ordered by server_version,
-  -- { "changes": [{table, row}], "next_since": bigint, "has_more": bool, "min_client_version": int }
+  -- { "changes": [{table, row}], "next_since": bigint, "has_more": bool, "min_client_version": int,
+  --   "resync_required": bool }
 ```
 Table allowlist in the function; unknown tables rejected. Row JSON validated against
 `packages/contracts/schema/<table>.json` (CI test runs the same schemas on clients).
 
 ### 5.3 Client loop (identical on Android and web)
+Local writes stamp a fresh HLC on every merge group they touch (repository layer, never UI) and
+set `dirty=1`.
 1. **Push:** select `dirty=1` rows in batches of 500 ordered by hlc → `sync_push` → mark applied
-   rows clean; for `stale` rows, apply server row locally (log to `conflict_log`) and clear dirty.
+   rows clean; for `merged` rows, apply the returned server row locally (log the losing groups to
+   `conflict_log`) and clear dirty — unless the row was edited locally during the request, in
+   which case it is merged per group and stays dirty.
 2. **Pull:** loop `sync_pull(since)` until `has_more=false`; apply each batch in **one SQLite
-   transaction** using the same LWW rule (incoming.hlc > local.hlc, unless local is dirty with a
-   greater hlc); update `since`.
+   transaction** using the same per-group rule as the server (incoming group wins iff its
+   `field_hlc` is greater; a dirty local group with a greater hlc wins and stays dirty); update
+   `since`.
+   The merge function lives in `core/sync` (Kotlin) and `src/sync` (TS) and is tested against the
+   shared vectors in `packages/contracts/fixtures/merge.json`.
 3. Rebuild affected `daily_agg` days (triggers handle it) and emit change notifications.
 4. Errors: exponential backoff with jitter (2 s → 5 min); auth errors pause sync and surface a
    banner; never lose dirty rows.
@@ -260,6 +292,7 @@ clients show "Update required" and stop pushing (pull continues read-only).
 
 ### 5.4 Invariants (property-tested)
 - Convergence: any interleaving of pushes/pulls from N devices ends with identical rows.
+- Field preservation: concurrent edits to different merge groups of one row all survive (AC-11.3).
 - Idempotence: replaying a push or pull batch changes nothing.
 - No lost writes: a dirty row is never cleared unless the server acknowledged ≥ its hlc.
 
@@ -305,15 +338,25 @@ Fixtures: `fixtures/<institution>.jsonl`, one anonymized SMS per line with `expe
 sender; first high-confidence hit) → `GenericExtractor` fallback (amount/acct/ref/VPA regexes,
 lower confidence) → `Normalizer` (amount → minor units via `BigDecimal`→`Long`; dates in
 `Asia/Kolkata`; VPA lowercase) → `MerchantResolver` → result.
-Then in `SmsIngestor`: dedup (ref, then account+amount+±10 min+direction) → rules engine → upsert
-→ `sms_index` update. All in one Room transaction.
+Then in `SmsIngestor`: derive the deterministic id (ADR 0010:
+`UUIDv8(SHA-256("sms:v1|" + sender + "|" + sha256(body) + "|" + date_sent_s))`) → dedup (same id,
+then ref, then account+amount+±10 min+direction) → rules engine → upsert → `sms_index` update.
+All in one Room transaction.
+
+Wallet handling (SPEC §5.4 step 9): `wallet_load` (UPI Lite / Paytm wallet top-up from a bank
+account) → expense, system category *Small UPI payments*; `wallet_spend` → ignored.
+
+Priority institutions for templates/fixtures: **SBI** (`SBIINB`, `SBIUPI`, `ATMSBI`, `CBSSBI`),
+**Axis** (`AXISBK`), **Paytm** (`PAYTM`, `iPaytm`) — confirm exact headers from the owner's
+exported fixtures (§6.6).
 
 ### 6.4 Performance
 Regexes compiled once (lazy, per sender group). Target ≤ 1 ms parse per SMS on device; live path
 ≤ 50 ms total including DB write; historical import streams the cursor (no list materialization).
 
 ### 6.5 Privacy
-Raw body stored only if the user enabled it (default from OPEN_QUESTIONS #6) and never synced.
+Raw body stored locally **by default (on)** — enables re-parsing after parser upgrades and "Show
+message"; the user can turn it off and purge stored bodies in Settings → SMS. Never synced.
 Logs never include SMS bodies, amounts, VPAs, or names (a `Redact` helper + lint rule).
 
 ### 6.6 Dev-only fixture exporter
@@ -394,6 +437,9 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 ---
 
 ## 10. Security & privacy
+- Environments (ADR 0004): **dev/test = local Supabase** (`supabase start`, Docker Desktop/WSL2 on
+  the owner's Windows machine; Linux in CI). **prod = hosted project in Mumbai (`ap-south-1`)**;
+  migrations reach prod only by an owner-approved `supabase db push` at release.
 - RLS on every table (`user_id = auth.uid()`), pgTAP tests for cross-user isolation and for RPCs.
 - Supabase anon key in clients; **service role key only in Edge Functions** (never in repo; GitHub
   secrets). `.env*` files are gitignored and blocked from Claude reads/edits by hooks.
@@ -420,12 +466,16 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 ---
 
 ## 12. CI/CD (GitHub Actions)
+Every workflow invokes `node scripts/verify.mjs <track>` (ADR 0011) so local (Windows) and CI
+(Linux) run identical gates; a `windows-latest` smoke job runs `contracts web` to keep it portable.
 - `android.yml`: ktlint, detekt, unit tests, Roborazzi verify, assemble both flavors, APK size
   check; nightly: Macrobenchmark on emulator (indicative) + manual device run before releases.
 - `web.yml`: tsc, eslint, vitest, build, bundle-size check, Playwright, Lighthouse CI.
 - `supabase.yml`: `supabase start`, apply migrations, pgTAP, `supabase db lint`.
 - `contracts.yml`: JSON schema validation, golden fixtures regenerated-and-diffed, sms-rules report.
-- Release: tag → signed AABs to Play internal track (Gradle Play Publisher), web to hosting.
+- Release: tag → signed `lite` AAB to Play (Gradle Play Publisher), `sms` AAB to the internal
+  track / APK artifact for sideload (ADR 0005); web to **Cloudflare Pages** (CSP headers via
+  `_headers`).
 
 ---
 
@@ -433,3 +483,5 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 0001 local-first with SQLite on both clients · 0002 custom sync protocol (HLC LWW) · 0003 money as
 minor units · 0004 Supabase · 0005 Android flavors for SMS policy · 0006 no third-party SDKs ·
 0007 analytics SQL shared via contracts · 0008 contact picker over READ_CONTACTS.
+Added at kickoff: 0009 per-field LWW · 0010 deterministic SMS ids · 0011 cross-platform tooling.
+(All written 2026-10-15 — see `docs/adr/`.)

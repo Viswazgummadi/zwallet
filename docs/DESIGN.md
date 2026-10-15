@@ -137,8 +137,12 @@ Notation per screen: **Purpose · Layout (top→bottom) · Interactions · State
    (on-device, only amounts/merchants sync, personal messages never read); "Allow SMS access" →
    system dialog; "Not now". On grant → **Import range** chooser (3/6/12 months/all) → progress
    screen with live counters and "Continue in background".
-4. **Make it yours** — month start day, app lock toggle, notification preference. Done → Home with
-   a one-time coach mark on the FAB.
+4. **Make it yours** — month start day (default "1st — calendar month"), app lock toggle
+   (**default on**, lock after 5 min; biometrics with PIN fallback), notification preference.
+   Done → Home with a one-time coach mark on the FAB.
+- Signing in after using offline-only mode: a one-time sheet "Merged 214 transactions from this
+  phone into your account" (+ "View" → Activity filtered to merged rows). No choice dialog —
+  merge is automatic (SPEC §11).
 
 ### 5.2 Home
 **Purpose:** "How am I doing right now?" in one glance; launchpad.
@@ -257,7 +261,9 @@ Confirm / Not recurring.
 
 ### 5.15 Settings
 Grouped list per SPEC §13. Privacy & data page explicitly lists "On this device only" vs
-"Synced". Sync page: status, last sync, pending count, force sync, conflict log (advanced).
+"Synced". Sync page: status, last sync, pending count, force sync, conflict log (advanced) —
+each entry names the transaction and the **field** that lost ("Note on 'Swiggy ₹420' — kept web
+edit from 9:41 pm") with "Use this value" to re-apply it.
 
 ### 5.16 App lock
 Full-screen brand surface, BiometricPrompt auto-shown, PIN fallback; recents thumbnail blurred

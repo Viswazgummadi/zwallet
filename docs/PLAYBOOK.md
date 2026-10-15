@@ -41,22 +41,34 @@ procedures you trigger with `/name`.
 
 ---
 
-## 1. One-time setup (your NUC)
+## 1. One-time setup (Windows 11 — the owner's machine; see ADR 0011)
 
-Install (Linux commands; adjust for your distro):
-1. **Claude Code** — native installer: `curl -fsSL https://claude.ai/install.sh | bash`, then
-   `claude` and log in. Docs: https://code.claude.com/docs/en/setup
-2. **JDK 21** (`sudo apt install openjdk-21-jdk`) and **Android Studio** (SDK, platform-tools,
-   an emulator image: Pixel 7, latest API). Add `platform-tools` to `PATH` for `adb`.
-3. **Node 22 LTS** + pnpm (`corepack enable && corepack prepare pnpm@latest --activate`).
-4. **Docker** (Supabase local stack needs it) + **Supabase CLI** (`npm i -g supabase` or the
-   distro package).
-5. `gh` (GitHub CLI, then `gh auth login`), `jq` (hooks need it), `ktlint`.
+Install (PowerShell; `winget` ids shown — Linux equivalents in the note below):
+1. **Claude Code** — native installer: `irm https://claude.ai/install.ps1 | iex`, then `claude`
+   and log in. **Git for Windows** (`winget install Git.Git`) provides Git Bash, which Claude Code
+   uses to run the bash hooks. Docs: https://code.claude.com/docs/en/setup
+2. **JDK 21** (`winget install EclipseAdoptium.Temurin.21.JDK`) and **Android Studio**
+   (`winget install Google.AndroidStudio`; SDK, platform-tools, an emulator image: Pixel 7,
+   latest API). Set `ANDROID_HOME` (usually `%LOCALAPPDATA%\Android\Sdk`), put
+   `%ANDROID_HOME%\platform-tools` on `PATH`, and add `sdk.dir=` (forward slashes or escaped
+   backslashes) to `apps/android/local.properties`.
+3. **Node 22 LTS** (`winget install OpenJS.NodeJS.LTS`) + pnpm (`corepack enable`).
+4. **Docker Desktop** with the **WSL2** backend (`winget install Docker.DockerDesktop`; Supabase
+   local stack needs it, ~4 GB RAM while running) + **Supabase CLI** (`scoop install supabase` or
+   `npm i -g supabase`).
+5. `gh` (`winget install GitHub.cli`, then `gh auth login`), `jq` (`winget install jqlang.jq` —
+   hooks need it), `ktlint` (optional; Gradle runs it anyway).
 6. **Your phone:** Developer options → Wireless debugging → `adb pair <ip:port>` then
    `adb connect <ip:port>`. Claude can now install builds and take screenshots of your real phone.
 
+Windows notes: the repo path contains a space (`C:\Users\G Viswaz\…`) — always quote paths. Run
+gates with `node scripts/verify.mjs all` (same command CI uses). Gradle: `.\gradlew.bat …` in
+PowerShell, `./gradlew …` in Git Bash. Screenshots go to `$env:TEMP`, not `/tmp`.
+On Linux the same steps apply with apt/brew packages and `./gradlew`.
+
 Accounts & secrets (you do these by hand — Claude is blocked from reading `.env*`):
-- Supabase project (region Mumbai), copy URL + anon key into `apps/web/.env.local` and
+- Supabase project (region Mumbai) — this hosted project is **prod**; dev uses local Docker
+  (ADR 0004). Copy URL + publishable key into `apps/web/.env.local` and
   `apps/android/local.properties` (Claude will tell you the exact keys in M0).
 - Google Cloud OAuth clients (Web + Android with your debug SHA-1) for Google sign-in.
 
@@ -64,8 +76,11 @@ Optional personal setting — desktop notification when Claude needs you. Add to
 `~/.claude/settings.json`:
 ```json
 { "hooks": { "Notification": [ { "matcher": "", "hooks": [
-  { "type": "command", "command": "notify-send 'Claude Code' 'zwallet needs your attention'" } ] } ] } }
+  { "type": "command", "command": "powershell -NoProfile -Command \"[console]::beep(880,200)\"" } ] } ] } }
 ```
+(For a real toast on Windows install the BurntToast module and use
+`powershell -NoProfile -Command "New-BurntToastNotification -Text 'Claude Code','zwallet needs your attention'"`;
+on Linux use `notify-send`.)
 
 ---
 
@@ -74,7 +89,7 @@ Optional personal setting — desktop notification when Claude needs you. Add to
 ```bash
 git clone git@github.com:Viswazgummadi/zwallet.git && cd zwallet
 unzip ~/Downloads/zwallet-kit.zip -d .        # puts the kit at the repo root
-chmod +x .claude/hooks/*.sh
+# (no chmod needed on Windows: .gitattributes keeps *.sh LF; hooks run via Git Bash)
 git add -A && git commit -m "chore: planning kit (spec, architecture, design, Claude Code config)"
 git push -u origin main
 claude                                         # accept the workspace trust prompt once
@@ -111,18 +126,18 @@ approving. Commit the doc updates: `docs: answers from kickoff interview`.
 ```
 The skill makes Claude plan, create a task list, scaffold the monorepo (Gradle modules, pnpm
 workspaces, Supabase migration + RLS + sync RPCs + pgTAP, contracts package, token generator,
-`scripts/verify.sh`, CI workflows), and end with app shells that sign in and show an empty Home
+`scripts/verify.mjs`, CI workflows), and end with app shells that sign in and show an empty Home
 in light/dark on both platforms.
 
 To keep it going unattended until done, after approving the plan:
 ```text
-/goal M0 Definition of Done in SPEC §12 holds: ./scripts/verify.sh all exits 0 (show the output),
+/goal M0 Definition of Done in SPEC §12 holds: node scripts/verify.mjs all exits 0 (show the output),
 pgTAP RLS tests pass, Android sms+lite debug builds install and show Home (adb screenshot shown),
 web Home renders light and dark (Playwright screenshot shown). Or stop after 40 turns.
 ```
 Then review: `Use the code-reviewer subagent on everything since the kit commit.`
 **You** should read: the first migration, the sync RPCs, `Money` on both platforms, and
-`scripts/verify.sh`. Ask Claude to walk you through each (`explain sync_push line by line`).
+`scripts/verify.mjs`. Ask Claude to walk you through each (`explain sync_push line by line`).
 
 ---
 
@@ -267,7 +282,7 @@ quality comes from — don't rush them.
 ## 11. Troubleshooting & anti-patterns
 
 - **Claude ignores a rule** → CLAUDE.md is too long or vague; prune it, or turn the rule into a hook.
-- **Hooks don't fire** → `/hooks` to list; `chmod +x .claude/hooks/*.sh`; `jq` installed?
+- **Hooks don't fire** → `/hooks` to list; Git Bash + `jq` on PATH? (Linux: `chmod +x .claude/hooks/*.sh`)
 - **Worktree session missing env** → add the file to `.worktreeinclude`.
 - **Big-bang prompts** ("build the whole app") → always milestone → plan → items.
 - **Accepting un-run code** → demand evidence; use `/goal` with an explicit check command.

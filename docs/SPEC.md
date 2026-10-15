@@ -164,11 +164,16 @@ Amount display: `₹1,23,456.78` (Indian digit grouping for INR), sign by type (
 - AC-5.3.1: No background work is scheduled for non-financial SMS.
 
 ### 5.4 Parsing pipeline (details in ARCH §6)
+0. **Owner's institutions (fixture priority):** SBI, Axis Bank, Paytm (wallet + UPI Lite); UPI via
+   GPay/PhonePe (bank SMS only). No credit cards today — card templates stay lower priority but
+   still get fixtures for the M2 breadth target.
 1. **Sender filter:** Indian DLT headers (`XX-HDFCBK`, `VM-SBIUPI-S`, …) matched against
    `packages/sms-rules/senders.json`; unknown senders with financial keywords → low-confidence path.
 2. **Classify** message kind: `debit`, `credit`, `refund/reversal`, `failed/declined`,
    `otp`, `promo`, `balance_only`, `mandate_upcoming` (autopay "will be debited"),
-   `card_statement/bill_due`, `emi_due`, `cash_withdrawal`, `self_transfer`, `unknown`.
+   `card_statement/bill_due`, `emi_due`, `cash_withdrawal`, `self_transfer`, `wallet_load`
+   (UPI Lite / Paytm wallet top-up), `wallet_spend` (payment funded from a wallet/UPI Lite),
+   `unknown`.
 3. **Extract** with templates (data, versioned): amount, currency, direction, account last4,
    card last4, counterparty (VPA / merchant / name), reference number (UPI RRN), available
    balance, date/time (SMS timestamp fallback), channel.
@@ -178,10 +183,18 @@ Amount display: `₹1,23,456.78` (Indian digit grouping for INR), sign by type (
 6. **Auto-categorize** (rule priority: user rule > merchant default > VPA pattern > MCC-like
    keyword map > `Uncategorized`).
 7. **Confidence score** (0–1). ≥ 0.85 and known template → `confirmed` (if user enabled
-   auto-confirm; default on); else `needs_review`.
+   auto-confirm; **default on** — confirmed in kickoff); else `needs_review`.
 8. Side effects: `balance_only` updates account balance snapshot; `mandate_upcoming` and
    `card_statement` create **upcoming items** (not transactions); `failed` creates nothing
    (but cancels a pending matching debit if one exists); `refund` tries to link the original.
+9. **Wallets / UPI Lite (kickoff decision):** individual UPI Lite and wallet payments usually
+   produce no SMS, so a `wallet_load` (top-up debited from a bank account) is recorded as an
+   **expense** in the system category *Small UPI payments* (`counts_as: spend`; recategorizable,
+   rules apply). Any `wallet_spend` SMS that does arrive is **ignored** (counted in "ignored") so the
+   same money is never counted twice.
+10. **Deterministic ids:** every SMS-sourced transaction's id is derived from the SMS fingerprint
+    (sender + body hash + sent time), so the same SMS ingested on two devices or after a reinstall
+    becomes the same row (ADR 0010).
 
 ### 5.5 Review inbox — AC-5.5.x
 - Badge count on Home; a card-stack UI: each card shows parsed fields + highlighted spans of the
@@ -196,7 +209,7 @@ Amount display: `₹1,23,456.78` (Indian digit grouping for INR), sign by type (
 OTPs and "do not share" messages; promotional offers with amounts ("Get ₹500 cashback");
 failed/declined; reversals and refunds (link original); "will be debited" mandates; credit card
 spends vs card bill payments; ATM withdrawals; own-account transfers (both legs seen);
-UPI Lite top-ups; wallet loads; NEFT/IMPS/RTGS credits incl. salary; interest credits;
+UPI Lite top-ups and wallet loads (→ spend, see §5.4 step 9); wallet-funded payment SMS (ignored); NEFT/IMPS/RTGS credits incl. salary; interest credits;
 foreign-currency card spends (store original currency + INR if both present); amounts with/
 without decimals, "Rs", "INR", "₹", commas, lakh grouping; truncated/multipart SMS; duplicate
 deliveries; SMS whose timestamp is delayed; same amount same merchant twice legitimately (two
@@ -216,17 +229,26 @@ Paste one or many SMS texts → same parser (Kotlin on Android; on web, v1.1 via
 - **Transport:** Fuel, Cab & auto, Metro & bus, Train, Parking & tolls, Vehicle service
 - **Housing:** Rent / PG, Maintenance, Furniture & home
 - **Bills & Utilities:** Electricity, Mobile recharge, Internet, DTH/OTT, Gas, Water
-- **Shopping:** Online shopping, Clothing, Electronics, Personal items
+- **Shopping:** Online shopping, Clothing, Electronics, Personal items, Small UPI payments
+  (UPI Lite / wallet top-ups, §5.4 step 9)
 - **Health:** Pharmacy, Doctor & lab, Fitness & gym
 - **Entertainment:** Movies & events, Subscriptions, Games
 - **Travel:** Flights, Hotels, Trips
 - **Education:** Courses, Books
 - **Personal care**
-- **Family & gifts:** Family support, Gifts, Donations
-- **Finance:** EMI & loans, Insurance, Fees & charges, Taxes
+- **Family & gifts:** Family support (`excluded`), Gifts, Donations
+- **Finance:** EMI & loans (`excluded` — whole EMI, principal and interest), Insurance, Fees &
+  charges, Taxes
 - **Investments:** SIP / mutual funds, Stocks, FD / RD (counted as *savings*, not spend; toggle)
-- **Income:** Salary, Freelance, Interest, Cashback & rewards, Reimbursement, Other income
-- **System:** Uncategorized, Transfer (hidden from spend), Refund (nets)
+- **Income:** Salary, Freelance, Interest, Cashback & rewards, Reimbursement (`excluded` — nets
+  reimbursable spend, see §9.2), Other income
+- **System:** Uncategorized, Transfer (hidden from spend), Refund (nets), Lending (`excluded`)
+
+System tag **`reimbursable`** (seeded, `system_key = 'reimbursable'`): marks work expenses the
+user expects to get back; they keep their real category but are excluded from Spend (§9.2).
+
+Kickoff decisions (2026-10-15): investments, reimbursable work expenses, family support, and
+EMI/loan repayments are all **outside Spend**. The user can change any category's `counts_as`.
 
 Each category: name, group, icon (Material Symbols Rounded), color (from DESIGN category palette),
 `counts_as`: `spend | savings | income | excluded`.
@@ -316,7 +338,10 @@ linked transactions, aging (0–30, 31–90, 90+ days), actions: Lent, Borrowed,
 ### 9.2 Canonical metric definitions
 - **Spend** = Σ amount of `expense` transactions whose category `counts_as = spend`, minus linked
   refunds (attributed to the original expense's date by default), using only the user's share for
-  splits. Excludes transfers, lending, and `savings`/`excluded` categories.
+  splits. Excludes transfers, lending, `savings`/`excluded` categories (incl. Family support and
+  EMI & loans), and any transaction tagged `reimbursable`. Refunds landing after a period has
+  closed still reduce the **original** period (confirmed in kickoff); the Analyzer marks such a
+  period "updated <date>" so a changed past total is never silent.
 - **Income** = Σ `income` with category `counts_as = income`.
 - **Savings** = Σ transactions in `counts_as = savings` categories (SIP, FD, …).
 - **Net cash flow** = Income − Spend − Savings (+ lending flows if toggle on).
@@ -365,7 +390,9 @@ the month ₹4,000 under budget". Each rule has an ID, threshold, cool-down, and
 
 ### 9.4 Period controls
 Presets: This month (default), Last month, Last 3/6/12 months, This year, Custom; and
-**cycle-aware months** (user can start months on salary day, e.g. the 1st or the 28th).
+**cycle-aware months**: default is the **calendar month** (start day 1, owner's choice); the user
+may set a fixed start day 1–28 in Settings. No salary-credit detection (cycle boundaries never
+depend on data).
 Swipe left/right on Android, `[`/`]` on web to step periods.
 
 ### 9.5 Category / merchant drill pages
@@ -394,9 +421,16 @@ rename/merge (merchant).
 - Sign in: Google (Credential Manager on Android, OAuth on web) or email OTP. Data is per user.
 - Works offline indefinitely; sync on app foreground, after local writes (debounced 2 s while
   foregrounded), on connectivity regain, and a constrained periodic job (ARCH §5, §9).
-- Conflict policy: last-writer-wins per row by hybrid logical clock; deletions win over older
-  edits; a conflict log is kept locally for debugging (Settings → Advanced).
+- Conflict policy: last-writer-wins **per field group** by hybrid logical clock (ADR 0009) —
+  concurrent edits to different fields of the same row both survive; tombstones are sticky (a
+  later field edit doesn't undelete; only Restore does); losing groups are kept in a local
+  conflict log (Settings → Advanced).
+- Offline-only mode ("Skip — keep data on this phone"): on later sign-in, local data is merged
+  into the account automatically (deterministic SMS ids + dedup prevent duplicates) and a one-time
+  summary shows what merged.
 - AC-11.1: Two devices editing different fields of different rows offline converge after sync.
+- AC-11.3: Two devices editing *different fields of the same row* offline both keep their edits
+  after sync; the same field resolves to the later HLC on every device.
 - AC-11.2: An edit made on web appears on the phone within 5 s while the app is foregrounded
   (Realtime ping → pull), and on next foreground otherwise.
 - Export: CSV (transactions, ledger) and full JSON backup; Import: CSV with column mapping
@@ -418,17 +452,18 @@ rename/merge (merchant).
 | **M4** Analyzer | Analytics SQL + golden fixtures, chart library (both platforms), modules A1–A15, insight cards, cross-filter, drill-downs | Every module traceable; parity tests pass; Insights first render ≤ 300 ms @ 50k txns |
 | **M5** Budgets, recurring, accounts, widgets | Budgets & alerts, recurring detection & upcoming, card cycles, Glance widgets, QS tile, attachments, CSV import/export | AC-10.x pass |
 | **M6** Polish | Motion pass, empty/error states, a11y audit, Baseline Profiles, perf & battery audit, onboarding polish | All budgets green; a11y audit clean; design QA sign-off against DESIGN.md |
-| **M7** Release | Signing, Play internal testing (both flavors), privacy policy, web deploy + custom domain, backups, crash reporting (self-hosted or none) | Installed on owner's phone from Play internal track; web live |
+| **M7** Release | Signing, Play: `lite` public, `sms` internal track / sideload only (ADR 0005), privacy policy, web deploy to Cloudflare Pages + custom domain, backups, crash reporting (self-hosted or none) | `sms` build installed on owner's phone; `lite` on Play; web live |
 
 ---
 
 ## 13. Settings (complete list)
 Profile & sign-in · Sync status (last sync, pending changes, force sync) · Appearance (system /
 light / dark, dynamic color on/off, amoled black, density) · Currency & locale (default INR,
-number grouping) · Month start day · SMS (enable, auto-confirm threshold, keep raw text locally
-on/off, re-run import, sender allow/block list) · Notifications (per channel) · Categories ·
-Rules · Tags · Accounts · My UPI ID (for reminders) · Security (app lock with biometrics/PIN,
-lock after N minutes, hide amounts on recents / `FLAG_SECURE`, "privacy mode" blur amounts on
+number grouping) · Month start day (default 1) · SMS (enable, auto-confirm threshold — default on,
+keep raw text locally — default on, with "Delete stored messages", re-run import, sender
+allow/block list) · Notifications (per channel) · Categories ·
+Rules · Tags · Accounts · My UPI ID (for reminders) · Security (app lock with biometrics/PIN —
+offered in onboarding, default on, lock after N minutes — default 5, hide amounts on recents / `FLAG_SECURE`, "privacy mode" blur amounts on
 Home) · Data (export, import, trash, delete account) · About (version, licenses, privacy).
 
 ---
