@@ -7,8 +7,8 @@ const base = process.env.ZW_BASE ?? '/zwallet/';
 /**
  * e2e runs against the production build (`vite preview`), so the CSP and service worker are real.
  * Screenshot baselines are recorded on the owner's Windows machine (the visual source of truth,
- * Inter renders differently per OS); other platforms run every functional assertion and skip
- * pixel comparison. Update with: pnpm --filter web e2e --update-snapshots
+ * Inter renders differently per OS and per machine); CI and other OSes run every functional
+ * assertion and skip pixel comparison. Update with: pnpm --filter web e2e --update-snapshots
  */
 export default defineConfig({
   testDir: 'e2e',
@@ -16,7 +16,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  ignoreSnapshots: process.platform !== 'win32',
+  ignoreSnapshots: process.platform !== 'win32' || !!process.env.CI,
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFileName}/{arg}-{platform}{ext}',
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: 'disabled' } },
   use: {

@@ -9,10 +9,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.zwallet.core.designsystem.theme.ThemeMode
 import dev.zwallet.core.designsystem.theme.Zw
 import dev.zwallet.core.designsystem.theme.ZwTheme
+
+/**
+ * Goldens are recorded on Windows; CI renders on Linux. Up to 1% of pixels may differ (anti-aliasing)
+ * before a comparison fails — layout or color regressions change far more.
+ */
+private val OPTIONS =
+    RoborazziOptions(compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.01f))
 
 /** Variants every screen state is captured in (MASTER_PROMPT DoD, DESIGN §9). */
 enum class ScreenVariant(
@@ -37,7 +45,7 @@ fun captureScreenMatrix(
     content: @Composable () -> Unit,
 ) {
     for (v in variants) {
-        captureRoboImage("src/test/screenshots/${name}_${v.suffix}.png") {
+        captureRoboImage("src/test/screenshots/${name}_${v.suffix}.png", OPTIONS) {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, v.fontScale)) {
                 ZwTheme(mode = v.theme) {

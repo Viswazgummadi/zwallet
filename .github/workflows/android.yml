@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Android: ktlint, unit tests (shared vectors), Roborazzi screenshot verify, assemble debug +
+# release, merged-manifest no-network check (ADR 0012, AC-11.9), APK size budget. ARCHITECTURE §12.
+name: android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - run: node scripts/verify.mjs android
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-reports
+          path: |
+            apps/android/**/build/reports/
+            apps/android/**/build/outputs/roborazzi/
+            apps/android/app/build/outputs/apk/
+          retention-days: 7

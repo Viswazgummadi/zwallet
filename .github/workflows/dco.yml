@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Every commit in a pull request must carry a Signed-off-by trailer (DCO 1.1, ADR 0014).
+name: dco
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check Signed-off-by on every commit
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            if ! git show -s --format=%B "$sha" | grep -qE '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "::error::Commit $sha has no Signed-off-by line. Fix with: git rebase --signoff $BASE"
+              missing=1
+            fi
+          done
+          exit $missing

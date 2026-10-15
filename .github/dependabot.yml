@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Security and version alerts (ARCHITECTURE §10 supply chain). New network-capable or large
+# dependencies still need an ADR before merging (CLAUDE.md).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      js-minor:
+        update-types: [minor, patch]
+  - package-ecosystem: gradle
+    directory: /apps/android
+    schedule:
+      interval: weekly
+    groups:
+      gradle-minor:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
