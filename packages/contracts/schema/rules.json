@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/rules.json",
+  "title": "rules row",
+  "description": "One row of `rules` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "name",
+    "priority",
+    "enabled",
+    "origin",
+    "match",
+    "actions"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "priority": {
+      "type": "integer"
+    },
+    "enabled": {
+      "type": "integer",
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "user",
+        "learned",
+        "system"
+      ]
+    },
+    "match": {
+      "type": "string"
+    },
+    "actions": {
+      "type": "string"
+    }
+  },
+  "x-immutable": [
+    "origin"
+  ],
+  "x-merge-groups": {
+    "name": [
+      "name"
+    ],
+    "priority": [
+      "priority"
+    ],
+    "enabled": [
+      "enabled"
+    ],
+    "match": [
+      "match"
+    ],
+    "actions": [
+      "actions"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}

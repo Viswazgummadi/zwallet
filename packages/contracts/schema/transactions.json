@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/transactions.json",
+  "title": "transactions row",
+  "description": "One row of `transactions` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "type",
+    "amount_minor",
+    "currency",
+    "original_amount_minor",
+    "original_currency",
+    "occurred_at",
+    "occurred_tz",
+    "account_id",
+    "category_id",
+    "merchant_id",
+    "counterparty_raw",
+    "note",
+    "payment_method",
+    "source",
+    "review_state",
+    "external_ref",
+    "refund_of_id",
+    "transfer_peer_id",
+    "split_group_id",
+    "my_share_minor",
+    "recurring_series_id",
+    "location"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "expense",
+        "income",
+        "transfer",
+        "refund"
+      ]
+    },
+    "amount_minor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "original_amount_minor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "original_currency": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "occurred_at": {
+      "type": "integer"
+    },
+    "occurred_tz": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "merchant_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "counterparty_raw": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "note": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "upi",
+        "card",
+        "netbanking",
+        "cash",
+        "atm",
+        "wallet",
+        "auto_debit",
+        "other"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "sms",
+        "paste",
+        "csv_import",
+        "recurring_auto"
+      ]
+    },
+    "review_state": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "needs_review"
+      ]
+    },
+    "external_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "refund_of_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transfer_peer_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "split_group_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "my_share_minor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "recurring_series_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "x-immutable": [
+    "source",
+    "external_ref"
+  ],
+  "x-merge-groups": {
+    "amount": [
+      "amount_minor",
+      "currency",
+      "original_amount_minor",
+      "original_currency"
+    ],
+    "type": [
+      "type"
+    ],
+    "when": [
+      "occurred_at",
+      "occurred_tz"
+    ],
+    "account": [
+      "account_id"
+    ],
+    "category": [
+      "category_id"
+    ],
+    "merchant": [
+      "merchant_id",
+      "counterparty_raw"
+    ],
+    "note": [
+      "note"
+    ],
+    "method": [
+      "payment_method"
+    ],
+    "review": [
+      "review_state"
+    ],
+    "links": [
+      "refund_of_id",
+      "transfer_peer_id",
+      "split_group_id",
+      "my_share_minor"
+    ],
+    "recurring": [
+      "recurring_series_id"
+    ],
+    "location": [
+      "location"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}

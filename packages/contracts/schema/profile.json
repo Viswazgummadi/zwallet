@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/profile.json",
+  "title": "profile row",
+  "description": "One row of `profile` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "display_name",
+    "default_currency",
+    "month_start_day",
+    "my_vpa",
+    "phone_hash_salt",
+    "prefs"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010).",
+      "const": "me"
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "display_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "default_currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "month_start_day": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 28
+    },
+    "my_vpa": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "phone_hash_salt": {
+      "type": "string"
+    },
+    "prefs": {
+      "type": "string"
+    }
+  },
+  "x-immutable": [],
+  "x-merge-groups": {
+    "name": [
+      "display_name"
+    ],
+    "currency": [
+      "default_currency"
+    ],
+    "month_start": [
+      "month_start_day"
+    ],
+    "vpa": [
+      "my_vpa"
+    ],
+    "salt": [
+      "phone_hash_salt"
+    ],
+    "prefs": [
+      "prefs"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/zwallet-payload.json",
+  "title": ".zwallet payload",
+  "description": "Decrypted, gunzipped payload of a .zwallet file (ARCHITECTURE §5.3). Every user-data table, tombstones included. Never sms_index, raw SMS text, op_log, conflict_log, daily_agg, device_state or device prefs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "exported_at",
+    "source_node",
+    "max_hlc",
+    "tables"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Data schema version. Bumped with every schema change after the first release (ADR 0016). Newer → refused; older → upgraded in memory."
+    },
+    "exported_at": {
+      "type": "integer",
+      "description": "Epoch ms."
+    },
+    "source_node": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}$",
+      "description": "HLC node id of the exporting install."
+    },
+    "max_hlc": {
+      "type": "string",
+      "description": "Max HLC over every row in the file; the importer advances its clock past it."
+    },
+    "tables": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "accounts",
+        "categories",
+        "merchants",
+        "tags",
+        "people",
+        "recurring_series",
+        "transactions",
+        "transaction_tags",
+        "ledger_entries",
+        "rules",
+        "budgets",
+        "upcoming_items",
+        "saved_filters",
+        "insight_dismissals",
+        "attachments"
+      ],
+      "properties": {
+        "profile": {
+          "type": "array",
+          "items": {
+            "$ref": "profile.json"
+          }
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "accounts.json"
+          }
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "categories.json"
+          }
+        },
+        "merchants": {
+          "type": "array",
+          "items": {
+            "$ref": "merchants.json"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "tags.json"
+          }
+        },
+        "people": {
+          "type": "array",
+          "items": {
+            "$ref": "people.json"
+          }
+        },
+        "recurring_series": {
+          "type": "array",
+          "items": {
+            "$ref": "recurring_series.json"
+          }
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "transactions.json"
+          }
+        },
+        "transaction_tags": {
+          "type": "array",
+          "items": {
+            "$ref": "transaction_tags.json"
+          }
+        },
+        "ledger_entries": {
+          "type": "array",
+          "items": {
+            "$ref": "ledger_entries.json"
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "rules.json"
+          }
+        },
+        "budgets": {
+          "type": "array",
+          "items": {
+            "$ref": "budgets.json"
+          }
+        },
+        "upcoming_items": {
+          "type": "array",
+          "items": {
+            "$ref": "upcoming_items.json"
+          }
+        },
+        "saved_filters": {
+          "type": "array",
+          "items": {
+            "$ref": "saved_filters.json"
+          }
+        },
+        "insight_dismissals": {
+          "type": "array",
+          "items": {
+            "$ref": "insight_dismissals.json"
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "attachments.json"
+          }
+        }
+      }
+    },
+    "attachments_blobs": {
+      "type": "array",
+      "description": "Only when the user ticked Include receipt photos (M5).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sha256",
+          "mime_type",
+          "data_b64"
+        ],
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "mime_type": {
+            "enum": [
+              "image/webp",
+              "image/jpeg",
+              "image/png"
+            ]
+          },
+          "data_b64": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

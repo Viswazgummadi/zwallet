@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/zwallet-envelope.json",
+  "title": ".zwallet envelope",
+  "description": "Outer UTF-8 JSON of a .zwallet file (ARCHITECTURE §5.3, ADR 0013). Not secret, but authenticated: AAD = canonical JSON (keys sorted, no whitespace) of every field except ciphertext. Plaintext = gzip(JSON) matching zwallet-payload.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "format_version", "kdf", "cipher", "created_by", "ciphertext"],
+  "properties": {
+    "format": { "const": "zwallet-backup" },
+    "format_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Envelope version. This app reads format_version 1; a higher value is refused with \"Update zwallet to open this file\"."
+    },
+    "kdf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "iterations", "salt"],
+      "properties": {
+        "name": { "const": "PBKDF2-HMAC-SHA256" },
+        "iterations": { "type": "integer", "minimum": 600000, "maximum": 10000000 },
+        "salt": {
+          "type": "string",
+          "description": "Base64 (RFC 4648, padded) of 16 random bytes.",
+          "pattern": "^[A-Za-z0-9+/]{22}==$"
+        }
+      }
+    },
+    "cipher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "iv"],
+      "properties": {
+        "name": { "const": "AES-256-GCM" },
+        "iv": {
+          "type": "string",
+          "description": "Base64 (padded) of 12 random bytes.",
+          "pattern": "^[A-Za-z0-9+/]{16}$"
+        }
+      }
+    },
+    "created_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app", "app_version"],
+      "properties": {
+        "app": { "enum": ["zwallet-android", "zwallet-web"] },
+        "app_version": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "ciphertext": {
+      "type": "string",
+      "description": "Base64 (padded) of AES-GCM ciphertext || 16-byte tag.",
+      "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+    }
+  }
+}

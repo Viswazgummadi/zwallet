@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/upcoming_items.json",
+  "title": "upcoming_items row",
+  "description": "One row of `upcoming_items` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "kind",
+    "title",
+    "amount_minor",
+    "currency",
+    "due_on",
+    "account_id",
+    "recurring_series_id",
+    "ledger_entry_id",
+    "status",
+    "transaction_id",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "mandate",
+        "card_bill",
+        "emi",
+        "loan_due",
+        "recurring",
+        "other"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "amount_minor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "due_on": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "account_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recurring_series_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ledger_entry_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "upcoming",
+        "paid",
+        "dismissed"
+      ]
+    },
+    "transaction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "sms",
+        "recurring"
+      ]
+    }
+  },
+  "x-immutable": [
+    "source"
+  ],
+  "x-merge-groups": {
+    "kind": [
+      "kind"
+    ],
+    "title": [
+      "title"
+    ],
+    "amount": [
+      "amount_minor",
+      "currency"
+    ],
+    "due": [
+      "due_on"
+    ],
+    "links": [
+      "account_id",
+      "recurring_series_id",
+      "ledger_entry_id"
+    ],
+    "status": [
+      "status",
+      "transaction_id"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}

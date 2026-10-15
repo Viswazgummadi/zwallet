@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/ledger_entries.json",
+  "title": "ledger_entries row",
+  "description": "One row of `ledger_entries` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "person_id",
+    "kind",
+    "amount_minor",
+    "currency",
+    "occurred_at",
+    "due_on",
+    "note",
+    "transaction_id",
+    "split_group_id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "person_id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "lent",
+        "borrowed",
+        "repaid_to_me",
+        "repaid_by_me"
+      ]
+    },
+    "amount_minor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "occurred_at": {
+      "type": "integer"
+    },
+    "due_on": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "note": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "transaction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "split_group_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "x-immutable": [],
+  "x-merge-groups": {
+    "person": [
+      "person_id"
+    ],
+    "kind": [
+      "kind"
+    ],
+    "amount": [
+      "amount_minor",
+      "currency"
+    ],
+    "when": [
+      "occurred_at"
+    ],
+    "due": [
+      "due_on"
+    ],
+    "note": [
+      "note"
+    ],
+    "links": [
+      "transaction_id",
+      "split_group_id"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/recurring_series.json",
+  "title": "recurring_series row",
+  "description": "One row of `recurring_series` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "name",
+    "merchant_id",
+    "category_id",
+    "account_id",
+    "cadence",
+    "interval_days",
+    "expected_amount_minor",
+    "currency",
+    "next_due_on",
+    "status",
+    "origin",
+    "remind_days_before"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "name": {
+      "type": "string"
+    },
+    "merchant_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "account_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cadence": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly",
+        "yearly",
+        "custom"
+      ]
+    },
+    "interval_days": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "expected_amount_minor": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "next_due_on": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "detected",
+        "confirmed",
+        "dismissed"
+      ]
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "detected",
+        "manual"
+      ]
+    },
+    "remind_days_before": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 30
+    }
+  },
+  "x-immutable": [
+    "origin"
+  ],
+  "x-merge-groups": {
+    "name": [
+      "name"
+    ],
+    "merchant": [
+      "merchant_id"
+    ],
+    "category": [
+      "category_id"
+    ],
+    "account": [
+      "account_id"
+    ],
+    "cadence": [
+      "cadence",
+      "interval_days"
+    ],
+    "amount": [
+      "expected_amount_minor",
+      "currency"
+    ],
+    "next_due": [
+      "next_due_on"
+    ],
+    "status": [
+      "status"
+    ],
+    "reminder": [
+      "remind_days_before"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}

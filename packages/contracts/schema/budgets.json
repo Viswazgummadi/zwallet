@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zwallet.dev/schemas/rows/budgets.json",
+  "title": "budgets row",
+  "description": "One row of `budgets` as stored in a .zwallet payload. Mirrors sql/client-schema.sql.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hlc",
+    "field_hlc",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "scope",
+    "category_id",
+    "amount_minor",
+    "currency",
+    "period",
+    "rollover",
+    "starts_on"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+    },
+    "hlc": {
+      "type": "string",
+      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+    },
+    "field_hlc": {
+      "type": "string",
+      "description": "JSON object {merge_group: hlc} encoded as a string."
+    },
+    "created_at": {
+      "type": "integer",
+      "description": "Epoch ms. Immutable; merge keeps the minimum."
+    },
+    "updated_at": {
+      "type": "integer",
+      "description": "Epoch ms. Merge keeps the maximum."
+    },
+    "deleted_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "overall",
+        "category",
+        "group"
+      ]
+    },
+    "category_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "amount_minor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "period": {
+      "type": "string",
+      "enum": [
+        "month"
+      ]
+    },
+    "rollover": {
+      "type": "integer",
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "starts_on": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}-\\d{2}$"
+    }
+  },
+  "x-immutable": [],
+  "x-merge-groups": {
+    "scope": [
+      "scope",
+      "category_id"
+    ],
+    "amount": [
+      "amount_minor",
+      "currency"
+    ],
+    "period": [
+      "period",
+      "starts_on"
+    ],
+    "rollover": [
+      "rollover"
+    ],
+    "deleted": [
+      "deleted_at"
+    ]
+  }
+}
