@@ -1,0 +1,20 @@
+zwallet
+Copyright (C) 2026 Viswaz Gummadi
+
+Original author, creator and maintainer: Viswaz Gummadi.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, version 3 of the
+License only (GPL-3.0-only).
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+the GNU General Public License in the LICENSE file for more details.
+
+Attribution requirement (GPL-3.0 section 7(b)): modified versions must preserve this NOTICE file,
+the copyright notices in source files, and the author credit "Created by Viswaz Gummadi" shown
+on the app's About screen. Add your own notices alongside them; don't remove or replace them.
+
+Contributors are listed in the AUTHORS file and in the git history. Each contributor keeps the
+copyright in their own contributions, which they license under GPL-3.0-only by signing off
+their commits (Developer Certificate of Origin, see CONTRIBUTING.md).

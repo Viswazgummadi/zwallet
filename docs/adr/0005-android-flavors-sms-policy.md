@@ -1,6 +1,6 @@
 # 0005 — Android product flavors for the SMS permission policy
 
-- Status: accepted
+- Status: superseded by 0012 (single build distributed via GitHub Releases; no Google Play)
 - Date: 2026-10-15
 
 ## Context

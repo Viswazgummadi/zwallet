@@ -12,7 +12,7 @@ things in parallel, and how to verify Claude's work so you end up with a product
 MASTER_PROMPT.md            ← the master prompt (single entry point for Claude)
 CLAUDE.md                   ← always-loaded project memory: golden rules + commands
 docs/SPEC.md                ← every feature + acceptance criteria (AC ids) + milestones
-docs/ARCHITECTURE.md        ← stack, schema SQL, sync protocol, SMS engine, analytics, budgets
+docs/ARCHITECTURE.md        ← stack, schema SQL, export/import + merge, SMS engine, analytics, budgets
 docs/DESIGN.md              ← design language + every screen (Android & web) + chart specs
 docs/OPEN_QUESTIONS.md      ← what Claude must ask you in session 1
 docs/PLAYBOOK.md            ← this file
@@ -22,8 +22,8 @@ packages/design-tokens/tokens.json  ← colors (validated chart palette), type, 
 .claude/hooks/              ← guard-files (secrets, applied migrations, golden files),
                               money-guard (catches float money / sensitive logs right after edits),
                               format (ktlint/prettier), after-compact (re-injects rules)
-.claude/rules/              ← path-scoped rules: android, web, supabase/contracts, sms, charts
-.claude/agents/             ← subagents: android-engineer, web-engineer, backend-sync-engineer,
+.claude/rules/              ← path-scoped rules: android, web, contracts, sms, charts
+.claude/agents/             ← subagents: android-engineer, web-engineer, data-engineer,
                               sms-parser-engineer, dataviz-engineer, code-reviewer,
                               perf-battery-auditor, design-qa
 .claude/skills/             ← slash commands: /milestone, /new-screen, /add-sms-bank,
@@ -53,9 +53,7 @@ Install (PowerShell; `winget` ids shown — Linux equivalents in the note below)
    `%ANDROID_HOME%\platform-tools` on `PATH`, and add `sdk.dir=` (forward slashes or escaped
    backslashes) to `apps/android/local.properties`.
 3. **Node 22 LTS** (`winget install OpenJS.NodeJS.LTS`) + pnpm (`corepack enable`).
-4. **Docker Desktop** with the **WSL2** backend (`winget install Docker.DockerDesktop`; Supabase
-   local stack needs it, ~4 GB RAM while running) + **Supabase CLI** (`scoop install supabase` or
-   `npm i -g supabase`).
+4. *(No Docker or backend tools needed — zwallet is local-only, ADR 0012.)*
 5. `gh` (`winget install GitHub.cli`, then `gh auth login`), `jq` (`winget install jqlang.jq` —
    hooks need it), `ktlint` (optional; Gradle runs it anyway).
 6. **Your phone:** Developer options → Wireless debugging → `adb pair <ip:port>` then
@@ -66,11 +64,13 @@ gates with `node scripts/verify.mjs all` (same command CI uses). Gradle: `.\grad
 PowerShell, `./gradlew …` in Git Bash. Screenshots go to `$env:TEMP`, not `/tmp`.
 On Linux the same steps apply with apt/brew packages and `./gradlew`.
 
-Accounts & secrets (you do these by hand — Claude is blocked from reading `.env*`):
-- Supabase project (region Mumbai) — this hosted project is **prod**; dev uses local Docker
-  (ADR 0004). Copy URL + publishable key into `apps/web/.env.local` and
-  `apps/android/local.properties` (Claude will tell you the exact keys in M0).
-- Google Cloud OAuth clients (Web + Android with your debug SHA-1) for Google sign-in.
+Secrets (you do these by hand — Claude is blocked from reading keystores and `.env*`):
+- **Release signing key** (needed by M7): create it with Android Studio → *Generate Signed
+  Bundle/APK* or `keytool`, keep a safe offline copy, and add it to the repo's GitHub secrets
+  (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`,
+  `RELEASE_KEY_PASSWORD`). Losing it means users can't update in place.
+- Enable **GitHub Pages** (Settings → Pages → Source: GitHub Actions) for the web app.
+- Nothing else: no accounts, OAuth clients or backend projects.
 
 Optional personal setting — desktop notification when Claude needs you. Add to
 `~/.claude/settings.json`:
@@ -107,8 +107,8 @@ Paste:
 ```text
 Read MASTER_PROMPT.md and follow section 7. Interview me with AskUserQuestion about everything in
 docs/OPEN_QUESTIONS.md and anything in SPEC/ARCHITECTURE/DESIGN you find ambiguous or risky.
-Don't ask obvious questions — dig into the hard parts (SMS edge cases from my banks, sync
-conflicts, what "spend" should include, month cycles). Then update the docs with my answers,
+Don't ask obvious questions — dig into the hard parts (SMS edge cases from my banks, merge
+conflicts between phone and laptop edits, what "spend" should include, month cycles). Then update the docs with my answers,
 write ADRs 0001–0008 from ARCHITECTURE §13, and present the M0 plan for approval.
 ```
 
@@ -125,30 +125,31 @@ approving. Commit the doc updates: `docs: answers from kickoff interview`.
 /milestone M0
 ```
 The skill makes Claude plan, create a task list, scaffold the monorepo (Gradle modules, pnpm
-workspaces, Supabase migration + RLS + sync RPCs + pgTAP, contracts package, token generator,
-`scripts/verify.mjs`, CI workflows), and end with app shells that sign in and show an empty Home
-in light/dark on both platforms.
+workspaces, contracts package with the client schema, merge groups and `.zwallet` format +
+test vectors, token generator, `scripts/verify.mjs`, CI workflows), and end with app shells that
+show an empty Home in light/dark on both platforms — no sign-in, no network.
 
 To keep it going unattended until done, after approving the plan:
 ```text
 /goal M0 Definition of Done in SPEC §12 holds: node scripts/verify.mjs all exits 0 (show the output),
-pgTAP RLS tests pass, Android sms+lite debug builds install and show Home (adb screenshot shown),
+the merged Android manifest has no INTERNET permission, the Android debug build installs and shows Home (adb screenshot shown),
 web Home renders light and dark (Playwright screenshot shown). Or stop after 40 turns.
 ```
 Then review: `Use the code-reviewer subagent on everything since the kit commit.`
-**You** should read: the first migration, the sync RPCs, `Money` on both platforms, and
-`scripts/verify.mjs`. Ask Claude to walk you through each (`explain sync_push line by line`).
+**You** should read: `client-schema.sql`, the merge groups, the `.zwallet` envelope schema,
+`Money` and `Hlc` on both platforms, and `scripts/verify.mjs`. Ask Claude to walk you through
+each (`explain the merge rule line by line`).
 
 ---
 
 ## 5. Parallel tracks (from M1 on)
 
-After M0, `packages/contracts` is the only coupling between Android, web, and backend, so they
+After M0, `packages/contracts` is the only coupling between Android and web, so they
 can run in parallel **in separate git worktrees** (isolated checkouts, no file collisions):
 
 ```bash
-# terminal 1 — backend & contracts lead (merges first)
-claude -w backend
+# terminal 1 — contracts lead (merges first; small sessions)
+claude -w contracts
 # terminal 2
 claude -w android
 # terminal 3
@@ -159,11 +160,11 @@ copied via `.worktreeinclude`. In each, start with `/milestone M1` and tell it w
 owns, e.g.:
 ```text
 /milestone M1
-You own ONLY the android track of this milestone. Contracts are owned by the backend session;
+You own ONLY the android track of this milestone. Contracts are owned by the contracts session;
 if you need a contract change, write it in docs/OPEN_QUESTIONS.md under "contract requests" and
 stop that item. Open a PR per work item.
 ```
-Merge order per milestone: **backend/contracts → android & web** (rebase them on main after the
+Merge order per milestone: **contracts → android & web** (rebase them on main after the
 contracts PR merges). Keep the number of simultaneous sessions to what you can actually review —
 3 is plenty.
 
@@ -182,11 +183,12 @@ And for wide mechanical changes, the bundled `/batch <instruction>` fans out acr
 Each milestone: `/clear` → `/milestone Mx` → approve plan → work → `/check-all` → reviewers →
 merge. Add the extra instructions below to the milestone prompt.
 
-**M1 — Ledger + sync**
+**M1 — Ledger + transfer**
 ```text
 Priorities: quick add must hit AC-4.2.1 (≤ 3 taps) and feel instant; search grammar shared by
-both clients with one test-vector file in packages/contracts; sync property tests (ARCH §5.4)
-run in CI against local Supabase. Seed 50k synthetic transactions for perf tests.
+both apps with one test-vector file in packages/contracts; .zwallet export/import with merge on
+both apps, with merge property tests (ARCH §5.6) and Kotlin↔TS backup vectors in CI (AC-11.x).
+Seed 50k synthetic transactions for perf tests.
 ```
 
 **M2 — SMS engine** (Android track + sms-parser-engineer; web track can do paste-import UI)
@@ -255,7 +257,7 @@ Rule of thumb: never accept "should work" — ask for the output, the screenshot
 
 After each milestone, spend 30 minutes on this:
 1. `Explain <component> to me like a staff engineer onboarding a new hire: data flow, invariants,
-   failure modes, and the 3 lines of code that matter most.` (sync engine, HLC, SMS dedup,
+   failure modes, and the 3 lines of code that matter most.` (merge engine, HLC, SMS dedup,
    daily_agg triggers, forecast bootstrap, Compose chart drawing)
 2. `Quiz me with 5 hard questions about <component>; don't give answers until I reply.`
 3. Implement one small piece yourself (e.g. the HLC, or one SMS template) and ask the
@@ -288,5 +290,5 @@ quality comes from — don't rush them.
 - **Accepting un-run code** → demand evidence; use `/goal` with an explicit check command.
 - **Letting docs drift** → any behavior change updates SPEC/DESIGN in the same PR.
 - **SMS parser tuned by guessing** → only real anonymized fixtures + the accuracy report.
-- **Play Store SMS rejection** → ship `lite` on Play, keep `sms` for internal testing/sideload
-  (already designed in as flavors).
+- **Losing data** → no cloud copy exists by design. Export a `.zwallet` regularly (the app reminds
+  you) and keep the password somewhere safe.

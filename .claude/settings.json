@@ -9,7 +9,6 @@
       "Bash(cmd /c gradlew.bat *)",
       "Bash(./scripts/*)",
       "Bash(node scripts/*)",
-      "Bash(supabase *)",
       "Bash(adb *)",
       "Bash(node *)",
       "Bash(git status*)",

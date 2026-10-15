@@ -1,6 +1,6 @@
 # 0002 — Custom pull/push sync protocol with HLC ordering
 
-- Status: accepted (merge granularity refined by 0009)
+- Status: superseded by 0012 and 0013 (HLC clocks, tombstones and LWW merge carried over into file-based transfer)
 - Date: 2026-10-15
 
 ## Context

@@ -11,7 +11,7 @@ Start milestone **$ARGUMENTS** of zwallet.
    section it touches. Read `docs/CHANGELOG.md` and `git log --oneline -20` to see where we are.
 2. Check `docs/OPEN_QUESTIONS.md`; ask me (AskUserQuestion) anything that blocks this milestone.
 3. In plan mode, produce the plan:
-   - Work items grouped into **tracks** that can run in parallel (android / web / backend /
+   - Work items grouped into **tracks** that can run in parallel (android / web / contracts /
      sms / dataviz), with dependencies between items made explicit (contracts first).
    - For each item: files/modules, AC ids, tests to add, verification command.
    - Which items to delegate to which subagent in `.claude/agents/`, and which tracks deserve

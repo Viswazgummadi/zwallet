@@ -36,7 +36,7 @@ month" not "Total expenditure: INR 18240.00". Errors say what happened and what 
 - **Money semantics:** income amounts in `amountIncome` with a leading `+`; expenses in ink with
   `−`; transfers in secondary ink with `⇄`. Lending: "owes you" uses `amountIncome`, "you owe" uses
   ink + label — never red.
-- **Status** (`good/warning/serious/critical`) only for budget states, sync errors, anomalies —
+- **Status** (`good/warning/serious/critical`) only for budget states, import/export errors, anomalies —
   always with an icon and a label.
 - **Data colors:** see §7.2. Data colors never appear on text.
 
@@ -92,8 +92,10 @@ glyph on identity container); fallback = 1–2 letter monogram.
 - **≥ 1200 px:** left sidebar (Home, Transactions, Insights, People, Accounts, Budgets,
   Recurring, Review, Settings) + content (max width 1440) + optional right detail panel.
 - **840–1199:** collapsible icon sidebar. **< 840:** bottom nav like Android (PWA on phones).
-- Global top bar: search (opens command palette), period switcher (on Insights), sync status,
-  "New" button (`N`).
+- Global top bar: search (opens command palette), period switcher (on Insights), **data chip**
+  ("From phone · 15 Oct, 9:40 pm" — when the last file was imported; tap → Import / Export),
+  "New" button (`N`), **Export** button (`⌘E` / `Ctrl+E`) that shows a dot when there are edits
+  made since the last export.
 
 ---
 
@@ -114,7 +116,9 @@ glyph on identity container); fallback = 1–2 letter monogram.
 | **PersonRow** | Avatar (photo or monogram) · name · last activity · BalancePill |
 | **BalancePill** | "owes you ₹1,200" (income color) / "you owe ₹800" (ink) / "settled" (muted) |
 | **PeriodSwitcher** | `‹ October 2026 ›` with tap → preset sheet; swipe to step |
-| **SyncBanner** | Offline / sync error / update required; dismissible except update-required |
+| **DataBanner** | Export reminder ("It's been 34 days since your last export") · import result with Undo · "Update zwallet to open this file"; dismissible |
+| **PasswordField** | Show/hide toggle, strength hint (weak/okay/strong with label + icon, never color-only), caps-lock warning; confirm field on export |
+| **ImportPreview** | Counts as rows with icons: new · updated · deleted · conflicts (expandable list) · unchanged; source line ("Exported from zwallet web · 15 Oct, 9:40 pm"); primary "Import", secondary "Cancel" |
 | **EmptyState** | Illustration (simple line art, brand teal), one sentence, primary CTA |
 | **Skeleton** | Shimmer-free pulsing blocks (respects reduced motion), shapes match final layout |
 | **Snackbar** | Message + Undo; 5 s; stacks replace |
@@ -128,21 +132,18 @@ Every component: light/dark, disabled, pressed, focused (2dp focus ring `focusRi
 
 Notation per screen: **Purpose · Layout (top→bottom) · Interactions · States · a11y/motion notes.**
 
-### 5.1 Onboarding (4 steps, skippable after step 2)
+### 5.1 Onboarding (3 steps, skippable after step 1; no sign-in — there are no accounts)
 1. **Welcome** — headline "See where your money goes. Automatically." Hero: animated mini Pace
-   chart (sample data). CTA "Get started".
-2. **Sign in** — Google button (Credential Manager one-tap) + "Use email" (OTP). Explains sync in
-   one line. Offline-only mode link ("Skip — keep data on this phone").
-3. **SMS (sms flavor)** — sample parsed SMS → transaction animation; three privacy bullets
-   (on-device, only amounts/merchants sync, personal messages never read); "Allow SMS access" →
-   system dialog; "Not now". On grant → **Import range** chooser (3/6/12 months/all) → progress
-   screen with live counters and "Continue in background".
-4. **Make it yours** — month start day (default "1st — calendar month"), app lock toggle
-   (**default on**, lock after 5 min; biometrics with PIN fallback), notification preference.
-   Done → Home with a one-time coach mark on the FAB.
-- Signing in after using offline-only mode: a one-time sheet "Merged 214 transactions from this
-  phone into your account" (+ "View" → Activity filtered to merged rows). No choice dialog —
-  merge is automatic (SPEC §11).
+   chart (sample data). One line under it: "Everything stays on this phone. zwallet has no
+   internet access." CTA "Get started"; secondary link "Restore from a .zwallet file" (→ import
+   flow, then skip to step 3).
+2. **SMS** — sample parsed SMS → transaction animation; three privacy bullets (on-device; no
+   internet access — messages can't leave the phone; personal messages never read); "Allow SMS
+   access" → system dialog; "Not now". On grant → **Import range** chooser (3/6/12 months/all) →
+   progress screen with live counters and "Continue in background".
+3. **Make it yours** — month start day (default "1st — calendar month"), app lock toggle
+   (**default on**, lock after 5 min; biometrics with PIN fallback), notification preference,
+   export reminder (default "every 30 days"). Done → Home with a one-time coach mark on the FAB.
 
 ### 5.2 Home
 **Purpose:** "How am I doing right now?" in one glance; launchpad.
@@ -154,7 +155,8 @@ Notation per screen: **Purpose · Layout (top→bottom) · Interactions · State
 │ ▼ 12% vs typical · ₹640/day left   │  ← delta chip + safe-to-spend
 │ ┌──────── Pace mini chart ───────┐ │  ← A2 compact (tap → Insights)
 │ └────────────────────────────────┘ │
-│ [ 3 to review › ]                  │  ← only if review inbox > 0 (sms flavor)
+│ [ 3 to review › ]                  │  ← only if review inbox > 0
+│ [ Export reminder … Export › × ]   │  ← DataBanner, only when last export > interval
 │ Insights                           │
 │ ┌ Food delivery +₹2,140 … ×  ┐     │  ← up to 3 InsightCards (horizontal pager)
 │ Budgets          (bullet bars ×3)  │
@@ -163,9 +165,11 @@ Notation per screen: **Purpose · Layout (top→bottom) · Interactions · State
 │ Recent           (last 5 rows) ›   │
 └──────────────────────────(+)───────┘
 ```
-- Pull to refresh = force sync. Privacy mode blurs amounts (tap & hold to peek).
-- States: first-run empty ("Add your first expense" + import CTA), offline banner, loading
-  skeleton only before first local data.
+- No pull-to-refresh (nothing to refresh — all data is local). Privacy mode blurs amounts (tap &
+  hold to peek).
+- States: first-run empty ("Add your first expense" + SMS import CTA + "Restore from a file"),
+  loading skeleton only before first local data. There is no offline state — the app is always
+  offline by design.
 
 ### 5.3 Activity (transactions)
 - Large title "Activity"; SearchField; FilterBar; result summary line when filtered
@@ -260,10 +264,24 @@ logo, cadence, next date, amount, price-change flag; detected-but-unconfirmed se
 Confirm / Not recurring.
 
 ### 5.15 Settings
-Grouped list per SPEC §13. Privacy & data page explicitly lists "On this device only" vs
-"Synced". Sync page: status, last sync, pending count, force sync, conflict log (advanced) —
-each entry names the transaction and the **field** that lost ("Note on 'Swiggy ₹420' — kept web
-edit from 9:41 pm") with "Use this value" to re-apply it.
+Grouped list per SPEC §13. Privacy page: one plain statement ("zwallet never connects to the
+internet. Your data is only on this device and in files you export.") and the list of what a
+`.zwallet` file contains vs never contains (SMS text, app-lock and notification settings).
+**Data page:** "Last export: 12 Sep (34 days ago)"; **Export** · **Import** · CSV export · Trash ·
+Conflicts · Erase all data. Conflicts list: each entry names the transaction and the **field**
+that lost ("Note on 'Swiggy ₹420' — kept the laptop's edit from 9:41 pm") with "Use this value".
+
+### 5.15a Export & import flows
+- **Export:** sheet → "Include receipt photos" switch → PasswordField ×2 → "Export" → system
+  "Save to…" picker (default name `zwallet-2026-10-15.zwallet`) or "Share…" → snackbar "Exported
+  1,234 transactions". Warning line under the password: "If you forget this password, the file
+  can't be opened. There's no recovery."
+- **Import:** system file picker → password → ImportPreview → "Import" → progress (determinate,
+  cancellable until commit) → summary sheet with **Undo import**. Wrong password: inline error
+  under the field, file stays selected. Newer-version file: DataBanner "Update zwallet to open
+  this file" with a link to the GitHub releases page text (not fetched — the app has no network).
+- States: idle, encrypting/decrypting (progress), preview, success, wrong password, corrupted
+  file, newer version, too large.
 
 ### 5.16 App lock
 Full-screen brand surface, BiometricPrompt auto-shown, PIN fallback; recents thumbnail blurred
@@ -286,14 +304,16 @@ when `FLAG_SECURE` is on.
 | Review | Two-pane: queue list left, card right; `Y` confirm, `X` ignore, `1–8` pick category, `J/K` next/prev |
 | Insights | Dashboard grid (2–3 columns by width) of module cards; global filter bar sticky; cross-filter by clicking marks; every card has "⋯ → View data table / Download CSV / Open transactions" |
 | People / Person | List left, ledger right |
-| Import | CSV wizard: upload → column mapping (auto-detect) → preview with parse errors → dedup report → import |
+| First run | Centered card: "Open your zwallet file" (drop zone + "Choose file…") · "Start fresh" · one line: "Your file is opened in this browser only — nothing is uploaded." |
+| Import / Export | Same flows as Android §5.15a in a dialog; drag-and-drop a `.zwallet` anywhere to start an import; Export downloads the file (File System Access "Save as…" when supported) |
+| CSV import | CSV wizard: choose file → column mapping (auto-detect) → preview with parse errors → dedup report → import |
 | Settings | Left sub-nav |
 
 ### 6.1 Keyboard map (web)
-`⌘K` command palette (search transactions, jump to pages, run actions) · `/` focus search ·
+`⌘K` command palette (search transactions, jump to pages, run actions) · `⌘O` import a `.zwallet` file · `⌘E` export · `/` focus search ·
 `N` new transaction · `G H/T/I/P` go to Home/Transactions/Insights/People · `J/K` move ·
 `E` edit · `C` change category · `#` tags · `⌫` delete (with undo) · `[` `]` previous/next period ·
-`?` shortcut help. All shortcuts listed in the palette.
+`?` shortcut help. All shortcuts listed in the palette. `⌘` means `Ctrl` on Windows/Linux.
 
 ---
 
@@ -370,9 +390,14 @@ Android, arrow keys on web with live region), table view, forced-colors/print te
 | Empty Activity | "Nothing here yet. Add an expense, or import from SMS." |
 | Saved | "Added ₹165 · Food" [Undo] |
 | Deleted | "Deleted 3 transactions" [Undo] |
-| Offline | "You're offline. Changes are saved and will sync later." |
-| Sync error | "Couldn't sync. We'll retry automatically." [Retry] |
-| SMS rationale | "zwallet reads bank and UPI messages on this phone to log transactions for you. Messages never leave your phone — only the amount, merchant and date are synced." |
+| Exported | "Exported 1,234 transactions to zwallet-2026-10-15.zwallet" |
+| Imported | "Imported: 12 new, 40 updated, 3 deleted" [Undo] |
+| Wrong password | "That password didn't open this file. Check it and try again." |
+| Damaged file | "This file is damaged or isn't a zwallet file. Nothing was changed." |
+| Newer file | "This file is from a newer zwallet. Update the app to open it." |
+| Export reminder | "It's been 34 days since your last export. Export now so you don't lose anything." [Export] |
+| SMS rationale | "zwallet reads bank and UPI messages on this phone to log transactions for you. It has no internet access, so your messages can't leave this phone." |
+| About credit | "zwallet — created by Viswaz Gummadi. Free software under the GNU GPL v3." [Source code] |
 | Reminder share | "Hi Rahul, just a reminder about the ₹1,200 for the Goa trip. You can pay here: <UPI link>. Thanks!" |
 | Budget 80% | "You've used 80% of your Food budget with 9 days left." |
 
@@ -387,7 +412,7 @@ absolute otherwise ("Mon, 13 Oct").
 - [ ] Font scale 2.0: nothing clipped or overlapping; amounts never truncated
 - [ ] TalkBack/VoiceOver: logical order, labels, chart summaries, actions announced
 - [ ] Touch targets ≥ 48dp; focus rings visible (web keyboard)
-- [ ] All states: loading (skeleton), empty, error, offline, populated, very long text, huge
+- [ ] All states: loading (skeleton), empty, error, populated, very long text, huge
       amounts (₹12,34,56,789.00)
 - [ ] Motion per §2.5; reduced motion respected
 - [ ] Screenshot tests updated (Roborazzi / Playwright)

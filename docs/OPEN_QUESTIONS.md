@@ -14,30 +14,36 @@ then strike them here. Append new questions whenever a costly-to-reverse choice 
 4. ~~**Investments (SIP/FD) as savings**~~ → **Confirmed.** Also excluded from spend:
    reimbursable work expenses (tag), family support, EMI & loan repayments. → SPEC §6.1, §9.2.
 5. ~~**Auto-confirm high-confidence SMS**~~ → **On by default.** → SPEC §5.4 step 7.
-6. ~~**Keep raw SMS text locally**~~ → **On by default**, purgeable. → ARCH §6.5, SPEC §13.
-7. ~~**Domain & hosting**~~ → **Cloudflare Pages**; custom domain decided at M7 (see below).
-   → ARCH §12.
-8. ~~**Supabase region**~~ → Existing hosted project is **Mumbai** and is **prod**; dev/test on
-   local Docker. → ADR 0004, ARCH §10.
-9. ~~**App name, package id, brand color**~~ → **zwallet**, `in.zwallet.app` (lite) /
-   `in.zwallet.app.sms`, teal `#0B6E69`. → ADR 0005, DESIGN §2.1.
-10. ~~**Play Store**~~ → **`lite` on Play; `sms` sideload / internal track.** → ADR 0005, SPEC §12.
+6. ~~**Keep raw SMS text locally**~~ → **On by default**, purgeable, never exported. → ARCH §6.5.
+7. ~~**Domain & hosting**~~ → Web app on **GitHub Pages** (static, offline PWA). → ARCH §12.
+8. ~~**Supabase region**~~ → **Moot: no backend** (ADR 0012). The hosted Supabase project can be
+   deleted.
+9. ~~**App name, package id, brand color**~~ → **zwallet**, `in.zwallet.app`, teal `#0B6E69`;
+   forks change them in `branding.properties` / tokens. → ADR 0014, DESIGN §2.1.
+10. ~~**Play Store**~~ → **No Play.** Single build, signed APK on GitHub Releases. → ADR 0012.
 11. ~~**App lock on by default?**~~ → Offered in onboarding, **default on**, 5 min. → DESIGN §5.1.
 12. ~~**Historical data import**~~ → **None**; fresh start + SMS backfill.
 
-Also decided (raised during the interview):
-- Sync conflicts → **per-field-group LWW** (ADR 0009, SPEC §11 AC-11.3).
-- Same SMS on several devices / reinstall → **deterministic SMS ids** (ADR 0010).
+Also decided:
+- **Local-only, nothing online, no accounts, no sync** (ADR 0012). Android has no INTERNET
+  permission.
+- **Phone ↔ web by encrypted `.zwallet` files**, editable on both sides, merged on import with
+  per-field-group LWW (ADR 0009, 0013). Password-encrypted (AES-256-GCM + PBKDF2).
+- **Backups: manual export only** (+ optional reminder). Android cloud backup disabled.
+- **Deterministic SMS ids** (ADR 0010); seeded rows have fixed ids.
+- **License GPL-3.0-only + DCO, credit preserved via NOTICE/About** (ADR 0014).
 - UPI Lite / Paytm wallet top-ups → **counted as spend** ("Small UPI payments"); wallet-funded
-  payment SMS ignored. (SPEC §5.4 step 9)
-- Refunds → reduce the **original** expense's month (SPEC §9.2).
-- Offline-only data at sign-in → **merged automatically** with a summary (SPEC §11).
-- Windows 11 dev machine → Node-based tooling, Docker Desktop/WSL2 (ADR 0011).
+  payment SMS ignored (SPEC §5.4 step 9). Refunds reduce the **original** month (SPEC §9.2).
+- Windows 11 dev machine → Node-based tooling (ADR 0011); Docker no longer needed.
 
 ## Open
 
-13. **Custom domain** for the web app (needed by M7; also the privacy-policy URL).
+13. **Custom domain** for the web app (optional; GitHub Pages URL works without one).
 14. **EMI interest:** EMIs are wholly `excluded` today. Should the interest part later count as
     spend (needs principal/interest split per EMI)?
 15. **Paytm sender headers:** confirm exact DLT headers for Paytm wallet / UPI Lite messages from
     the first exported fixtures (M2).
+16. **Release signing key:** you generate the release keystore yourself and store it in GitHub
+    secrets (M7). Forks sign with their own key, so a fork's APK can't install over yours.
+17. **Legal review** of NOTICE's GPL §7(b) attribution term, if credit or commercial use ever
+    becomes important.

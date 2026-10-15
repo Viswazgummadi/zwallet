@@ -9,7 +9,9 @@ paths:
   `Number.isSafeInteger`) — all arithmetic through `src/lib/money.ts`.
 - All database access happens in the SQLite-WASM worker (`src/db/worker.ts`) via Comlink;
   components use TanStack Query hooks from `src/db/queries`. Never touch OPFS from the main thread.
-- Only the leader tab (Web Locks) runs sync; invalidate queries via BroadcastChannel.
+- Only the leader tab (Web Locks) writes; invalidate queries via BroadcastChannel.
+- **No network:** no `fetch` to other origins, no CDNs or remote fonts, no analytics; CSP
+  `connect-src 'self'` stays. `.zwallet` import/export runs in the worker with WebCrypto.
 - Styling: Tailwind v4 with CSS variables generated from `packages/design-tokens`. No raw hex.
 - Components: Radix primitives wrapped in `src/ui`; every interactive element keyboard-reachable
   with a visible focus ring; shortcuts registered in the command palette registry.

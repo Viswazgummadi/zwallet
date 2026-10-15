@@ -1,6 +1,6 @@
 # 0004 — Supabase as the backend (Mumbai; local Docker for dev)
 
-- Status: accepted
+- Status: superseded by 0012 (no backend)
 - Date: 2026-10-15
 
 ## Context

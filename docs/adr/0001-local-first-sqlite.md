@@ -11,7 +11,7 @@ offline; the web app is used for bulk clean-up and deep analysis.
 ## Decision
 Both clients keep a full local copy of the user's data in SQLite: Room on Android, SQLite-WASM on
 the `opfs-sahpool` VFS inside a Web Worker on web. The UI reads and writes only the local
-database. Sync with the server runs in the background (ADR 0002 and ADR 0009). Both clients use
+database. There is no server (ADR 0012); copies are merged by importing `.zwallet` files (ADR 0013). Both clients use
 one canonical client schema, `packages/contracts/sql/client-schema.sql`, with FTS5 for search
 and trigger-maintained `daily_agg` for analytics.
 
@@ -19,7 +19,7 @@ and trigger-maintained `daily_agg` for analytics.
 - UI latency doesn't depend on the network. Offline is the normal case, not an error path.
 - One SQL dialect on both clients, so analytics SQL can be shared (ADR 0007).
 - Every client stores data, so we must handle schema migrations, conflicts and tombstones.
-- On web: OPFS storage quotas and a single sync leader tab (Web Locks), with BroadcastChannel
+- On web: OPFS storage quotas and a single writer tab (Web Locks), with BroadcastChannel
   invalidation across tabs.
 - Room's exported schema is diffed against `client-schema.sql` in tests to prevent drift.
 

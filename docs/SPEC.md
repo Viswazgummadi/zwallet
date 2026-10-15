@@ -1,6 +1,6 @@
 # zwallet — Product Specification
 
-Version 1.0 · Owner: Viswaz · Status: approved for build
+Version 1.1 (local-only redesign, 2026-10-15) · Owner: Viswaz · Status: approved for build
 Read with: `ARCHITECTURE.md` (how), `DESIGN.md` (look & feel). Acceptance criteria are tagged
 `AC-x.y` so tests and PRs can reference them.
 
@@ -16,12 +16,18 @@ Read with: `ARCHITECTURE.md` (how), `DESIGN.md` (look & feel). Acceptance criter
 3. Track money lent/borrowed per person with contact linking, reminders, and settle-up.
 4. An Analyzer that answers, at a glance: *Where did my money go? Am I on pace? What changed?
    What's recurring? What's unusual? Who owes me?* — with every number traceable.
-5. Phone, web, and multiple devices always consistent; works fully offline.
+5. **Nothing online, ever:** works fully offline with no account; the Android app has no internet
+   permission. Phone ↔ laptop (web UI) by an encrypted export/import file that merges both ways
+   (§11, ADR 0012/0013).
+6. **Yours to fork:** anyone can download it from GitHub and make it their own app under GPL-3.0,
+   keeping the original author's credit (ADR 0014).
 
 **Non-goals (v1)**
 - Bank account aggregation via APIs/Account Aggregator, investment portfolio tracking, tax filing,
   bill payment, any money movement. zwallet observes and records; it never moves money.
-- Multi-user shared household books (data model must not preclude it; see ARCH §4).
+- Accounts, cloud sync, servers, or automatic backup to any cloud — by design (ADR 0012).
+- Multi-user shared household books.
+- Google Play distribution (GitHub Releases only; ADR 0012).
 - iOS native app (web works on iOS Safari as a PWA).
 - LLM features. All "smart" behavior is deterministic and explainable in v1.
 
@@ -131,18 +137,19 @@ Amount display: `₹1,23,456.78` (Indian digit grouping for INR), sign by type (
   **original** expense (toggle: "by refund date").
 
 ### 4.7 Attachments
-- Receipt photos (camera/gallery) stored locally, compressed (WebP, ≤ 300 KB), optional sync to
-  Supabase Storage (private bucket). Not in v1 critical path (M5).
+- Receipt photos (camera/gallery) stored locally, compressed (WebP, ≤ 300 KB); included in a
+  `.zwallet` export only when "Include receipt photos" is ticked. Not in v1 critical path (M5).
 
 ---
 
-## 5. SMS ingestion (Android `sms` flavor)
+## 5. SMS ingestion (Android)
 
 ### 5.1 Permission flow — AC-5.1.x
 1. Onboarding explains value with a concrete preview ("We found transactions like these…" uses a
    bundled sample, not the user's data, before permission).
-2. Rationale screen states: parsing is on-device; only amounts/merchants/dates sync; raw SMS
-   never leaves the phone; personal messages are never read (sender filter happens first).
+2. Rationale screen states: parsing is on-device; zwallet has no internet access, so messages
+   cannot leave the phone; message text is never included in exports; personal messages are
+   never read (sender filter happens first).
 3. Request `RECEIVE_SMS` + `READ_SMS`. If denied: app works fully in manual mode; a gentle,
    dismissible card in Settings offers it again. Never nag more than once per 30 days.
 - AC-5.1.1: Denying permission never blocks any other feature.
@@ -215,9 +222,9 @@ without decimals, "Rs", "INR", "₹", commas, lakh grouping; truncated/multipart
 deliveries; SMS whose timestamp is delayed; same amount same merchant twice legitimately (two
 coffees) — dedup must use time window and ref numbers, not just amount.
 
-### 5.7 Paste-to-import (both flavors, web too)
+### 5.7 Paste-to-import (Android and web)
 Paste one or many SMS texts → same parser (Kotlin on Android; on web, v1.1 via a TS port or WASM
-— see ARCH §6.7) → review inbox. Lets `lite` users and web users import.
+— see ARCH §6.7) → review inbox. Lets people who deny SMS permission, and web users, import.
 
 ---
 
@@ -283,7 +290,7 @@ Free-form, multi; used for trips/projects/reimbursables. Tag views appear as sav
 
 ### 8.1 People
 - Create from contact picker (stores display name, photo URI, contact lookup key, and a
-  **hashed** E.164 phone for matching across devices), or by name only.
+  **hashed** E.164 phone for matching across merged copies), or by name only.
 - Optional UPI VPA per person (enables "Request via UPI" links and SMS matching).
 - Merge duplicates.
 
@@ -313,7 +320,8 @@ split_group (optional). Balance(person) = Σ effects. A person is **settled** at
   set their own VPA, a `upi://pay?pa=<my-vpa>&pn=<my-name>&am=<amount>&cu=INR&tn=<note>` link.
 - AC-8.1: Lending never affects spend/income analytics unless the user toggles
   "Include lending in cash flow".
-- AC-8.2: Person balance updates instantly and is identical on all devices after sync.
+- AC-8.2: Person balance updates instantly and is identical on phone and web after a file
+  exchange.
 
 ### 8.4 People screens
 List sorted by |balance| with sections "Owes you" / "You owe" / "Settled"; totals at top
@@ -416,28 +424,53 @@ rename/merge (merchant).
 
 ---
 
-## 11. Sync, accounts, data ownership
+## 11. Data ownership, export & import (local-only — ADR 0012, 0013)
 
-- Sign in: Google (Credential Manager on Android, OAuth on web) or email OTP. Data is per user.
-- Works offline indefinitely; sync on app foreground, after local writes (debounced 2 s while
-  foregrounded), on connectivity regain, and a constrained periodic job (ARCH §5, §9).
-- Conflict policy: last-writer-wins **per field group** by hybrid logical clock (ADR 0009) —
-  concurrent edits to different fields of the same row both survive; tombstones are sticky (a
-  later field edit doesn't undelete; only Restore does); losing groups are kept in a local
-  conflict log (Settings → Advanced).
-- Offline-only mode ("Skip — keep data on this phone"): on later sign-in, local data is merged
-  into the account automatically (deterministic SMS ids + dedup prevent duplicates) and a one-time
-  summary shows what merged.
-- AC-11.1: Two devices editing different fields of different rows offline converge after sync.
-- AC-11.3: Two devices editing *different fields of the same row* offline both keep their edits
-  after sync; the same field resolves to the later HLC on every device.
-- AC-11.2: An edit made on web appears on the phone within 5 s while the app is foregrounded
-  (Realtime ping → pull), and on next foreground otherwise.
-- Export: CSV (transactions, ledger) and full JSON backup; Import: CSV with column mapping
-  wizard (web), zwallet JSON restore.
-- Delete account: wipes server data (Edge Function), local DB, and signs out; requires typing
-  "DELETE".
-- Privacy screen lists exactly what syncs and what stays on device.
+- **No account, no server, no network.** Install and use; data lives only in the app's local
+  database (Android) or the browser's private storage (web). The Android app has no INTERNET
+  permission; the web app is a static PWA that works offline after first load and never sends
+  data anywhere.
+- **Export (`.zwallet`)** — Settings → Data → Export (Android: system "Save to…" picker or share
+  sheet; web: download). The user sets a password (≥ 10 characters, entered twice, strength hint,
+  "there is no way to recover it" warning). The file is encrypted (AES-256-GCM) and contains every
+  transaction, category, account, person, ledger entry, rule, budget etc. — including deletions —
+  but **never SMS text**. Default name `zwallet-YYYY-MM-DD.zwallet`. Optional "Include receipt
+  photos".
+- **Import** — pick a `.zwallet` file → enter password → **preview** ("12 new · 40 updated ·
+  3 deleted · 2 conflicts kept the newer edit") → Import → summary with **Undo import** (available
+  until the next import or 7 days). Import **merges**; it never wipes local data.
+- **Typical loop:** export on phone → open on laptop (web) → analyze/edit → export from web →
+  import on phone. Also: restore onto a new phone = install + import.
+- **Conflict policy:** last-writer-wins **per field group** by hybrid logical clock (ADR 0009) —
+  edits to different fields of the same transaction on both sides both survive; the same field
+  edited on both sides keeps the later edit, and the other value is kept in the conflict log
+  (Settings → Data → Conflicts, "Use this value"); deletions are sticky (only Restore undoes them).
+- **Web first run:** "Open a .zwallet file from your phone" or "Start fresh"; the web copy then
+  persists in the browser until cleared (Settings → Data → Erase this browser's copy).
+- **Export reminder:** because backups are manual (owner's choice), Home shows a dismissible card
+  when the last export is older than 30 days (interval configurable, can be turned off).
+- **CSV:** export transactions/ledger as CSV (unencrypted, with a warning); CSV import with a
+  column-mapping wizard (web, M5).
+- **Erase all data:** wipes the local DB and files; requires typing "ERASE".
+- Privacy screen states plainly: "zwallet never connects to the internet. Your data is only on
+  this device and in files you export."
+- AC-11.1: Export on device A → import into an empty copy B yields identical user data and
+  identical Analyzer golden outputs.
+- AC-11.2: After A → B, editing *different fields of the same row* on A and on B, then exchanging
+  files both ways, both edits are present on both sides.
+- AC-11.3: The same field edited on both sides resolves to the later HLC on both sides after
+  files are exchanged both ways; the losing value appears in the conflict log.
+- AC-11.4: A deletion on either side carries over and is never resurrected by an older file, even
+  one exported months earlier.
+- AC-11.5: Importing the same file twice changes nothing the second time.
+- AC-11.6: A wrong password, a corrupted or tampered file, or a file > 200 MB fails with a clear
+  message and leaves local data byte-identical.
+- AC-11.7: A file from a newer app version is refused with "Update zwallet to open this file";
+  files from older versions import.
+- AC-11.8: Export of 50k transactions ≤ 5 s and import ≤ 10 s on a mid-range phone (ARCH §9).
+- AC-11.9: The Android release build's merged manifest has no INTERNET permission, and a
+  Playwright run of the web app makes zero requests outside its own origin (CI-enforced).
+- AC-11.10: Undo import restores the exact pre-import state.
 
 ---
 
@@ -445,29 +478,33 @@ rename/merge (merchant).
 
 | M | Scope | Exit criteria (all DoD items in MASTER_PROMPT §6 plus) |
 |---|---|---|
-| **M0** Foundations | Monorepo, CI, Supabase schema + RLS + sync RPCs, contracts package, design-token pipeline, empty app shells (Android + web) with theme, nav, auth | CI green on all three tracks; pgTAP RLS tests pass; Android & web sign in and show an empty Home in light/dark |
-| **M1** Ledger + sync | Local DB both clients, quick add, list, detail/edit, search & filters (grammar), undo, trash, categories CRUD, accounts basic, two-way sync | AC-4.x, AC-11.1/11.2 pass; 50k-row perf tests pass |
-| **M2** SMS engine | `sms-rules` package, parser + classifier + dedup + merchant normalization, historical import, live receiver, review inbox, rules learning, flavors | ≥ 300 fixture SMS across ≥ 12 banks/apps at ≥ 98% field accuracy; AC-5.x pass; battery check (ARCH §9) |
+| **M0** Foundations | Monorepo, CI, contracts package (client schema, merge groups, `.zwallet` envelope schema, money/HLC/uuid/merge vectors), design-token pipeline, empty app shells (Android + web) with theme and nav, no network, LICENSE/NOTICE | CI green on all tracks; Android debug build installs and shows an empty Home in light/dark; web Home in light/dark; merged manifest has no INTERNET permission |
+| **M1** Ledger + transfer | Local DB both apps, quick add, list, detail/edit, search & filters (grammar), undo, trash, categories CRUD, accounts basic, `.zwallet` export/import with merge on both apps | AC-4.x, AC-11.x pass; 50k-row perf tests pass |
+| **M2** SMS engine | `sms-rules` package, parser + classifier + dedup + merchant normalization, historical import, live receiver, review inbox, rules learning | ≥ 300 fixture SMS across ≥ 12 banks/apps at ≥ 98% field accuracy; AC-5.x pass; battery check (ARCH §9) |
 | **M3** People & lending | People, contact picker, ledger, splits, settle, reminders, UPI request link, smart suggestions | AC-8.x pass; spend unaffected by lending (golden tests) |
 | **M4** Analyzer | Analytics SQL + golden fixtures, chart library (both platforms), modules A1–A15, insight cards, cross-filter, drill-downs | Every module traceable; parity tests pass; Insights first render ≤ 300 ms @ 50k txns |
 | **M5** Budgets, recurring, accounts, widgets | Budgets & alerts, recurring detection & upcoming, card cycles, Glance widgets, QS tile, attachments, CSV import/export | AC-10.x pass |
 | **M6** Polish | Motion pass, empty/error states, a11y audit, Baseline Profiles, perf & battery audit, onboarding polish | All budgets green; a11y audit clean; design QA sign-off against DESIGN.md |
-| **M7** Release | Signing, Play: `lite` public, `sms` internal track / sideload only (ADR 0005), privacy policy, web deploy to Cloudflare Pages + custom domain, backups, crash reporting (self-hosted or none) | `sms` build installed on owner's phone; `lite` on Play; web live |
+| **M7** Release | Release signing, `release.yml` (signed APK + checksum on GitHub Releases), GitHub Pages deploy, README install/fork guide, in-app About with credit + license + source link, privacy statement | Owner installs the APK from a GitHub Release; web live on GitHub Pages; a test fork rebrands by editing `branding.properties` only |
 
 ---
 
 ## 13. Settings (complete list)
-Profile & sign-in · Sync status (last sync, pending changes, force sync) · Appearance (system /
+Profile (name, default currency) · Appearance (system /
 light / dark, dynamic color on/off, amoled black, density) · Currency & locale (default INR,
 number grouping) · Month start day (default 1) · SMS (enable, auto-confirm threshold — default on,
 keep raw text locally — default on, with "Delete stored messages", re-run import, sender
 allow/block list) · Notifications (per channel) · Categories ·
 Rules · Tags · Accounts · My UPI ID (for reminders) · Security (app lock with biometrics/PIN —
 offered in onboarding, default on, lock after N minutes — default 5, hide amounts on recents / `FLAG_SECURE`, "privacy mode" blur amounts on
-Home) · Data (export, import, trash, delete account) · About (version, licenses, privacy).
+Home) · Data (export `.zwallet`, import, last export date, export reminder interval, conflicts,
+CSV export, trash, erase all data) · About (version, "Created by Viswaz Gummadi", GPL-3.0 license,
+source code link, open-source licenses, privacy statement).
 
 ---
 
 ## 14. Out of scope for v1 (parking lot)
 Notification-listener ingestion from UPI apps; email statement parsing; PDF bank statement import;
-on-device LLM explanations; shared household books; investments tracking; iOS app; Wear OS tile.
+on-device LLM explanations; shared household books; investments tracking; iOS app; Wear OS tile;
+optional self-hosted sync server (would need its own ADR and an opt-in build with network access);
+Google Play / F-Droid listing.

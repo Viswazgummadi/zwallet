@@ -1,21 +1,22 @@
 # 0009 — Per-field (field-group) last-writer-wins merge
 
-- Status: accepted
+- Status: accepted (transport updated by 0013: merge runs on `.zwallet` import, not via a server)
 - Date: 2026-10-15
 
 ## Context
-With row-level LWW (the original ARCH §5), suppose you change a transaction's category on the
-phone while offline and edit its note on the web. One of those two edits is silently discarded.
-The owner chose to merge per field instead (kickoff interview). This changes the stored data
-shape, which is why it needs an ADR.
+Take one transaction. You change its category on the phone, and its note in the web UI on your
+laptop, before the next file exchange. With row-level last-writer-wins, one of those two edits is
+silently discarded when the copies merge. The owner chose to merge per field instead (kickoff
+interview). This changes the stored data shape, which is why it needs an ADR. After ADR 0012 the
+merge happens when a `.zwallet` file is imported (ADR 0013), but the semantics are unchanged.
 
 ## Decision
-- Every synced table gains a `field_hlc` column: `jsonb not null default '{}'` in Postgres,
-  `TEXT` JSON in SQLite. It maps **merge group → HLC of that group's last write**.
-- The row-level `hlc` stays, equal to the max over all groups (used for ordering and the push
-  batch order).
+- Every user-data table has a `field_hlc TEXT NOT NULL DEFAULT '{}'` column. It is a JSON map
+  of **merge group → HLC of that group's last write**. The row-level `hlc` stays, equal to the
+  max over all groups.
 - **Merge groups** are sets of columns that must change together. They are declared once per
-  table in `packages/contracts/schema/<table>.json` under `x-merge-groups`. For example, on
+  table in `packages/contracts/schema/<table>.json` under `x-merge-groups`, and generated into
+  Kotlin and TS constants, with a CI check that the generated code is current. For example, on
   `transactions`:
   - `amount` {amount_minor, currency, original_amount_minor, original_currency}
   - `type`
@@ -27,26 +28,21 @@ shape, which is why it needs an ADR.
   - `recurring` {recurring_series_id}
   - `deleted` {deleted_at}
 
-  Immutable columns (`id`, `user_id`, `created_at`, `source`, `external_ref`) are in no group.
-- A migration mirrors the groups into a `sync_field_groups(table_name, group_name, columns text[])`
-  table that `sync_push` reads. A contracts test asserts that the two definitions are equal.
-- **Merge rule** (server in `sync_push`, and both clients when applying pulls): for each group,
-  take the incoming values if `incoming.field_hlc[g] > existing.field_hlc[g]` (a missing group
-  counts as the empty string). The resulting `field_hlc` is the per-group max, and `hlc` is the
-  max of that.
+  Immutable columns (`id`, `created_at`, `source`, `external_ref`) are in no group.
+- **Local writes** stamp a fresh HLC on each group they touch, in the repository layer.
+- **Merge rule** (on import, identical in Kotlin and TS): for each group, take the incoming
+  values if `incoming.field_hlc[g] > local.field_hlc[g]` (a missing group counts as the empty
+  string). The resulting `field_hlc` is the per-group max, and `hlc` is the max of that. Groups
+  that lose are recorded in the local `conflict_log` with their values, so the user can re-apply
+  them.
 - **Tombstones are sticky.** A field edit with a higher HLC updates the deleted row's fields but
   does not clear `deleted_at`. Only an explicit restore, which writes the `deleted` group with
   `deleted_at = null`, brings it back.
-- `sync_push` returns `merged: [{table, row}]` (the post-merge server row) for every row where any
-  incoming group lost. The client applies that row and clears `dirty`. Groups that lost are
-  recorded in `conflict_log`.
 
 ## Consequences
-- Concurrent edits to different fields of the same row both survive (new AC-11.3).
-- About 100–300 bytes of JSON per row, plus a slightly more complex push function. The property
-  tests (convergence, idempotence, no lost writes) now run per group.
-- Clients must stamp the group HLC on every local write. The repository layer does this, not the
-  UI.
+- Concurrent edits to different fields of the same row both survive (AC-11.2).
+- About 100–300 bytes of JSON per row. Merge property tests (convergence, idempotence, field
+  preservation, no resurrection) run per group, on both platforms, against shared vectors.
 - Adding a column means assigning it to a group, which is a contracts change.
 
 ## Alternatives considered
