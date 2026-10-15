@@ -1,0 +1,31 @@
+# Claude Code
+.claude/worktrees/
+.claude/settings.local.json
+CLAUDE.local.md
+# Secrets
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+keystore.properties
+# Node
+node_modules/
+dist/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+# Android
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.cxx/
+# Supabase
+supabase/.branches/
+supabase/.temp/
+# OS
+.DS_Store

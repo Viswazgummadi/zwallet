@@ -1,0 +1,4 @@
+.env.local
+apps/web/.env.local
+apps/android/local.properties
+supabase/.env
