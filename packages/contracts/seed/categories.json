@@ -25,7 +25,7 @@
           "system_key": "food.delivery",
           "id": "7a0fdd1a-011e-81e4-b574-4ca6cb46bd24",
           "name": "Food delivery",
-          "icon": "delivery_dining",
+          "icon": "moped",
           "color_token": "category.food",
           "counts_as": "spend",
           "sort_order": 10
@@ -45,7 +45,7 @@
       "system_key": "groceries",
       "id": "0308772a-263a-8d0d-97d6-46332419b326",
       "name": "Groceries",
-      "icon": "local_grocery_store",
+      "icon": "shopping_cart",
       "color_token": "category.groceries",
       "counts_as": "spend",
       "sort_order": 10,
@@ -54,7 +54,7 @@
           "system_key": "groceries.groceries",
           "id": "82a42705-9d5a-8b79-8f64-0fd9e2377051",
           "name": "Groceries",
-          "icon": "local_grocery_store",
+          "icon": "shopping_cart",
           "color_token": "category.groceries",
           "counts_as": "spend",
           "sort_order": 0
@@ -195,7 +195,7 @@
           "system_key": "bills.mobile",
           "id": "9a0eed7f-23da-80b7-bae8-dacd2aedf9ff",
           "name": "Mobile recharge",
-          "icon": "smartphone",
+          "icon": "mobile",
           "color_token": "category.bills",
           "counts_as": "spend",
           "sort_order": 10

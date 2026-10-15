@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MODES, palette, shared, tokens, type Palette } from './resolve.ts';
+import { iconOutputs } from './icons.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const KT = path.join(
@@ -361,6 +362,7 @@ const outputs: Array<[string, string]> = [
   [KT, kotlin()],
   [CSS, css()],
   [TS, ts()],
+  ...iconOutputs(ROOT, header),
 ];
 const check = process.argv.includes('--check');
 let stale = 0;

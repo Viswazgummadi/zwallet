@@ -11,6 +11,9 @@
     "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.ts\""
   },
   "devDependencies": {
-    "@material/material-color-utilities": "0.3.0"
+    "@material-symbols/svg-400": "0.48.0",
+    "@material/material-color-utilities": "0.3.0",
+    "harfbuzzjs": "1.6.3",
+    "subset-font": "2.9.0"
   }
 }
