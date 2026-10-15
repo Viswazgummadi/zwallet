@@ -176,7 +176,18 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  packages/contracts: {}
+
+  packages/design-tokens:
+    devDependencies:
+      '@material/material-color-utilities':
+        specifier: 0.3.0
+        version: 0.3.0
+
 packages:
+
+  '@material/material-color-utilities@0.3.0':
+    resolution: {integrity: sha512-ztmtTd6xwnuh2/xu+Vb01btgV8SQWYCaK56CkRK8gEkWe5TuDyBcYJ0wgkMRn+2VcE9KUmhvkz+N9GHrqw/C0g==}
 
   '@turbo/darwin-64@2.11.8':
     resolution: {integrity: sha512-u+6s4C2hskRYx6MkW2uT7BCW6sESCL/+5bjHDDWUfQfQliCSJ7lAHAL6RQaw0an9WU6nJvwYgT786mEWul2kDw==}
@@ -223,6 +234,8 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@material/material-color-utilities@0.3.0': {}
 
   '@turbo/darwin-64@2.11.8':
     optional: true

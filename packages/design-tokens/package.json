@@ -1,0 +1,16 @@
+{
+  "name": "@zwallet/design-tokens",
+  "version": "1.0.0",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "description": "tokens.json → Compose (Kotlin) and CSS/TS. Never hardcode a token value elsewhere.",
+  "type": "module",
+  "scripts": {
+    "build": "node --disable-warning=ExperimentalWarning build.ts",
+    "build:check": "node --disable-warning=ExperimentalWarning build.ts --check",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.ts\""
+  },
+  "devDependencies": {
+    "@material/material-color-utilities": "0.3.0"
+  }
+}
