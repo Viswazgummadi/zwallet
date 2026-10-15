@@ -439,6 +439,9 @@ object ZwTokens {
         val avatar: Dp = 40.dp
         val avatarLg: Dp = 64.dp
         val keypadKey: Dp = 72.dp
+        val contentMax: Dp = 1440.dp
+        val gutterCompact: Dp = 16.dp
+        val gutterMedium: Dp = 24.dp
     }
 
     object Breakpoints {

@@ -34,6 +34,7 @@ export const APP_ICONS: Record<string, boolean> = {
   lock: false,
   info: false,
   edit_note: false,
+  account_balance_wallet: false,
 };
 
 function categoryIcons(root: string): string[] {

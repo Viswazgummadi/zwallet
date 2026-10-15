@@ -399,6 +399,12 @@ function androidXml(): Array<[string, string]> {
       launcher(palettes.light.neutrals.onPrimary),
     ],
     [res('app/src/main/res/drawable/ic_launcher_monochrome.xml'), launcher('#FF000000')],
+    // Web app icon / favicon: the same glyph on the brand colour (PWA manifest, maskable).
+    [
+      path.join(ROOT, 'apps/web/public/icon.svg'),
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108"><rect width="108" height="108" fill="${palettes.light.neutrals.primary}"/><g transform="translate(27 27) scale(0.05625) translate(0 960)"><path fill="${palettes.light.neutrals.onPrimary}" d="${glyph}"/></g></svg>
+`,
+    ],
   ];
 }
 

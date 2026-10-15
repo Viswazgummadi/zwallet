@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+@import 'tailwindcss';
+@import './ui/generated/tokens.css';
+
+/* Inter subset, bundled (ADR 0015). Never a remote font (ADR 0012). */
+@font-face {
+  font-family: 'Inter';
+  src: url('./ui/fonts/InterVariable-zw.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html {
+    font-family: var(--zw-font-sans);
+    font-feature-settings: 'cv11';
+    background: var(--zw-color-page);
+    color: var(--zw-color-ink-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--zw-color-focus-ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility tnum {
+  font-feature-settings: 'cv11', 'tnum';
+}

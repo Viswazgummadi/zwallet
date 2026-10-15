@@ -1,3 +1,7 @@
 packages:
   - "apps/web"
   - "packages/*"
+minimumReleaseAgeExclude:
+  - "@vitest/mocker@5.0.5"
+  - "@vitest/spy@5.0.5"
+  - vitest@5.0.5

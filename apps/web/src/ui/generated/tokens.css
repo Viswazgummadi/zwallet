@@ -132,6 +132,9 @@
   --zw-size-avatar: 40px;
   --zw-size-avatar-lg: 64px;
   --zw-size-keypad-key: 72px;
+  --zw-size-content-max: 1440px;
+  --zw-size-gutter-compact: 16px;
+  --zw-size-gutter-medium: 24px;
   --zw-duration-micro: 100ms;
   --zw-duration-short: 200ms;
   --zw-duration-medium: 300ms;

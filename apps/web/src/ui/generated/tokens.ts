@@ -332,7 +332,10 @@ export const size = {
   "icon": 24,
   "avatar": 40,
   "avatarLg": 64,
-  "keypadKey": 72
+  "keypadKey": 72,
+  "contentMax": 1440,
+  "gutterCompact": 16,
+  "gutterMedium": 24
 } as const;
 export const breakpoints = {
   "compact": 0,
