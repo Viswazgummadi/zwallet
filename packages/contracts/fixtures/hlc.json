@@ -1,0 +1,88 @@
+{
+  "description": "Hybrid logical clock vectors (ARCHITECTURE §5.1, ADR 0009). Hand-written. Text form: 13 decimal digits of wall ms, '-', 4 lowercase hex digits of counter, '-', 8 lowercase hex digits of node id. Lexicographic order of the text = clock order. now(phys): wall = max(phys, last.wall); counter = last.counter + 1 if wall == last.wall else 0; if counter > 0xffff then wall += 1, counter = 0; last = result (own node). receive(h) (after an import, with the file's max_hlc): last = max(last, h) by text order; the next now() then sorts after h. An empty last means no clock yet.",
+  "parse": [
+    {
+      "text": "1760000000000-0000-0a1b2c3d",
+      "wall": 1760000000000,
+      "counter": 0,
+      "node": "0a1b2c3d"
+    },
+    { "text": "0000000000000-0000-00000000", "wall": 0, "counter": 0, "node": "00000000" },
+    {
+      "text": "9999999999999-ffff-ffffffff",
+      "wall": 9999999999999,
+      "counter": 65535,
+      "node": "ffffffff"
+    },
+    {
+      "text": "1760000000000-00ff-deadbeef",
+      "wall": 1760000000000,
+      "counter": 255,
+      "node": "deadbeef"
+    },
+    { "text": "1760000000000-0000-0A1B2C3D", "error": "invalid" },
+    { "text": "176000000000-0000-0a1b2c3d", "error": "invalid" },
+    { "text": "1760000000000-00000-0a1b2c3d", "error": "invalid" },
+    { "text": "1760000000000-0000-0a1b2c3", "error": "invalid" },
+    { "text": "1760000000000_0000_0a1b2c3d", "error": "invalid" },
+    { "text": "-760000000000-0000-0a1b2c3d", "error": "invalid" },
+    { "text": "", "error": "invalid" }
+  ],
+  "order": [
+    "0000000000000-0000-00000000",
+    "1760000000000-0000-ffffffff",
+    "1760000000000-0001-00000000",
+    "1760000000000-0001-0a1b2c3d",
+    "1760000000000-00ff-00000000",
+    "1760000000000-0100-00000000",
+    "1760000000001-0000-00000000",
+    "9999999999999-ffff-ffffffff"
+  ],
+  "clock": [
+    {
+      "name": "monotonic counter, backwards wall clock, receive newer and older, overflow",
+      "node": "0a1b2c3d",
+      "last": "",
+      "steps": [
+        { "op": "now", "phys": 1000, "expect": "0000000001000-0000-0a1b2c3d" },
+        { "op": "now", "phys": 1000, "expect": "0000000001000-0001-0a1b2c3d" },
+        { "op": "now", "phys": 999, "expect": "0000000001000-0002-0a1b2c3d" },
+        { "op": "now", "phys": 2000, "expect": "0000000002000-0000-0a1b2c3d" },
+        {
+          "op": "receive",
+          "hlc": "0000000005000-0003-ffffffff",
+          "expect_last": "0000000005000-0003-ffffffff"
+        },
+        { "op": "now", "phys": 2001, "expect": "0000000005000-0004-0a1b2c3d" },
+        {
+          "op": "receive",
+          "hlc": "0000000004000-0000-ffffffff",
+          "expect_last": "0000000005000-0004-0a1b2c3d"
+        },
+        { "op": "now", "phys": 6000, "expect": "0000000006000-0000-0a1b2c3d" }
+      ]
+    },
+    {
+      "name": "counter overflow moves wall forward by 1 ms",
+      "node": "0a1b2c3d",
+      "last": "0000000007000-ffff-0a1b2c3d",
+      "steps": [
+        { "op": "now", "phys": 7000, "expect": "0000000007001-0000-0a1b2c3d" },
+        { "op": "now", "phys": 7000, "expect": "0000000007001-0001-0a1b2c3d" }
+      ]
+    },
+    {
+      "name": "receive from another node at the same wall, then now()",
+      "node": "00000001",
+      "last": "0000000008000-0000-00000001",
+      "steps": [
+        {
+          "op": "receive",
+          "hlc": "0000000008000-0000-00000002",
+          "expect_last": "0000000008000-0000-00000002"
+        },
+        { "op": "now", "phys": 8000, "expect": "0000000008000-0001-00000001" }
+      ]
+    }
+  ]
+}
