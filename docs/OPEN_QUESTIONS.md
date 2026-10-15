@@ -47,3 +47,26 @@ Also decided:
     secrets (M7). Forks sign with their own key, so a fork's APK can't install over yours.
 17. **Legal review** of NOTICE's GPL §7(b) attribution term, if credit or commercial use ever
     becomes important.
+
+## Raised during M0 (2026-10-15)
+
+18. **detekt:** no stable detekt release supports Kotlin 2.4 yet (1.23.8 targets Kotlin 2.0), so
+    M0 ships ktlint only. Add detekt (with the "no Double/Float in money packages" rule) once a
+    compatible release is out, or treat money-guard + ktlint as enough?
+19. **Room vs canonical CHECKs (M1):** Room creates tables from entities, which can't declare the
+    CHECK constraints in `client-schema.sql`. Proposal: create tables from the canonical SQL in
+    Room's `onCreate` and let Room validate the columns. Confirm before M1 starts.
+20. **SQLite on Android (M1):** the framework SQLite on API 26 lacks FTS5. Proposal:
+    `androidx.sqlite:sqlite-bundled` (Apache-2.0, ~1–2 MB per ABI) — over 500 KB, so it needs
+    your OK and an ADR.
+21. **phone_hash_salt (M3):** two fresh installs create different salts; after a merge `profile`
+    keeps one, so phone hashes from the other copy stop matching. Rehash on import, or match
+    people differently?
+22. **Pixel baselines:** web screenshots are compared only on your Windows machine; Roborazzi
+    allows ≤ 1% pixel drift between Windows goldens and Linux CI. Revisit if CI flakes.
+23. **Transfer sign ⇄:** Inter has no U+21C4, so it renders from the system font (ADR 0015).
+    Keep it, or draw the `sync_alt` icon instead?
+24. **Merchant dictionary:** the ~300-merchant seed (SPEC §6.2) moves to M2 with the SMS engine.
+25. **PWA updates:** M0 auto-updates the service worker; DESIGN wants an update prompt (M6).
+26. **Emulator cold start:** a debug build took ~26–29 s to first frame on the software-rendered
+    Pixel_7 emulator. Not representative; M6 Macrobenchmark on a release build is the real gate.

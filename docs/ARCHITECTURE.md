@@ -254,6 +254,10 @@ plaintext = gzip(JSON):
 5. Advance the local HLC past `max_hlc`; rebuild `daily_agg` for affected days; refresh FTS.
 6. Show the summary with **Undo import**.
 
+A losing group is logged as a conflict only if the winning side had not already seen the losing
+stamp (per-node frontiers, ADR 0017); equal stamps break ties by the larger value. Reference
+implementation: `packages/contracts/lib/merge-reference.mjs`.
+
 The merge function lives in `core/transfer` (pure Kotlin) and `src/transfer` (TS) and is tested
 against `packages/contracts/fixtures/merge.json`.
 
@@ -385,8 +389,9 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 - Security: BiometricPrompt app lock (`androidx.biometric`), `FLAG_SECURE` toggle;
   `allowBackup=false` and data-extraction rules exclude everything from Google cloud backup and
   device transfer (the `.zwallet` export is the only backup — owner's choice).
-- Branding: `branding.properties` (app name, `applicationId`, brand seed) feeds Gradle and the
-  token build, so a fork rebrands in one file.
+- Branding: `branding.properties` (app name, `applicationId`) feeds Gradle; the brand colour is
+  `brand.seed` in `packages/design-tokens/tokens.json` (README "Make it your own"), so a fork
+  rebrands by editing those two files. Kotlin packages are `dev.zwallet.*` (`in` is a keyword).
 - Strict mode in debug; `detekt` + custom lint: no `Double`/`Float` in money packages, no
   `Log.*` with sensitive types.
 
@@ -488,4 +493,5 @@ Every workflow invokes `node scripts/verify.mjs <track>` (ADR 0011) so local (Wi
 policy *(superseded by 0012)* · 0006 no third-party SDKs · 0007 analytics SQL shared via contracts ·
 0008 contact picker over READ_CONTACTS · 0009 per-field LWW merge · 0010 deterministic SMS ids ·
 0011 cross-platform tooling · 0012 local-only, no network · 0013 file-based transfer & `.zwallet`
-format · 0014 GPL-3.0-only + DCO.
+format · 0014 GPL-3.0-only + DCO · 0015 bundled Inter subset · 0016 schema v1 editable until
+the first release · 0017 conflict detection by per-node frontiers.

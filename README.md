@@ -9,7 +9,8 @@ internet permission. To look at your data on a laptop, export an encrypted `.zwa
 from the phone, open it in the web app (it runs entirely in your browser), and, if you edit
 there, import the file back on the phone. Changes merge both ways.
 
-> Status: pre-M0 (planning). See `docs/CHANGELOG.md`.
+> Status: M0 (foundations) — app shells, shared contracts and CI; no features yet. See
+> `docs/CHANGELOG.md`.
 
 ## Install (once released)
 - **Android:** download the APK from [GitHub Releases](../../releases) and install it. Or add

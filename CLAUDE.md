@@ -35,7 +35,7 @@ node scripts/verify.mjs all            # everything CI runs (use before saying "
 node scripts/verify.mjs android|web|contracts
 # Android (from apps/android; gradlew.bat on Windows if ./gradlew misbehaves)
 ./gradlew :app:assembleDebug :app:assembleRelease
-./gradlew testDebugUnitTest :core:smsparser:test :core:transfer:test
+./gradlew test                             # JVM + Robolectric unit tests (shared vectors)
 ./gradlew verifyRoborazziDebug             # screenshot tests; recordRoborazziDebug to update
 ./gradlew :app:checkNoNetworkPermission    # fails if the merged manifest has INTERNET
 ./gradlew :benchmark:connectedBenchmarkAndroidTest   # device required
@@ -44,9 +44,11 @@ pnpm install && pnpm --filter web dev
 pnpm -w turbo run lint typecheck test build
 pnpm --filter web e2e
 # Contracts & SMS rules
-pnpm --filter @zwallet/contracts golden     # regenerate expected/ (never hand-edit)
+pnpm --filter @zwallet/contracts codegen    # regenerate Contracts.kt + contracts.ts
+pnpm --filter @zwallet/design-tokens build  # regenerate tokens, icons, Android XML
+pnpm --filter @zwallet/contracts golden     # regenerate expected/ (M4; never hand-edit)
 pnpm --filter @zwallet/contracts vectors    # regenerate cross-platform merge/backup vectors
-pnpm --filter @zwallet/sms-rules report     # parser accuracy per institution
+pnpm --filter @zwallet/sms-rules report     # parser accuracy per institution (M2)
 # Device checks
 adb exec-out screencap -p > "${TEMP:-/tmp}/zw.png"   # or the session scratchpad; then Read the PNG
 ```
