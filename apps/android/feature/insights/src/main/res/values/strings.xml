@@ -4,4 +4,5 @@
     <string name="insights_title">Insights</string>
     <string name="insights_empty_title">Insights need a little history</string>
     <string name="insights_empty_body">Add a few transactions and zwallet will explain where your money goes.</string>
+    <string name="insights_add_expense">Add expense</string>
 </resources>

@@ -6,4 +6,13 @@
     <string name="nav_insights">Insights</string>
     <string name="nav_people">People</string>
     <string name="quick_add">Add transaction</string>
+    <string name="add_person">Add person</string>
+
+    <!-- Actions whose features have not shipped yet say so (announced by TalkBack). -->
+    <string name="stub_arrives">%1$s arrives in the next update.</string>
+    <string name="stub_feature_quick_add">Quick add</string>
+    <string name="stub_feature_add_person">Adding people</string>
+    <string name="stub_feature_sms_import">SMS import</string>
+    <string name="stub_feature_restore">Restoring from a file</string>
+    <string name="stub_feature_menu">The menu</string>
 </resources>

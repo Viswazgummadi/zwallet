@@ -9,6 +9,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import dev.zwallet.core.designsystem.generated.ZwPalette
 import dev.zwallet.core.designsystem.generated.ZwTokens
@@ -41,9 +42,10 @@ fun ZwTheme(
             amoled -> ZwTokens.amoled
             else -> ZwTokens.dark
         }
+    val colorScheme = remember(palette, dark) { palette.toColorScheme(dark) }
     CompositionLocalProvider(LocalZwPalette provides palette) {
         MaterialTheme(
-            colorScheme = palette.toColorScheme(dark),
+            colorScheme = colorScheme,
             typography = ZwTypography.material,
             shapes = ZwShapes.material,
             content = content,
