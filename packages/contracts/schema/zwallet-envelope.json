@@ -11,6 +11,7 @@
     "format_version": {
       "type": "integer",
       "minimum": 1,
+      "maximum": 9007199254740991,
       "description": "Envelope version. This app reads format_version 1; a higher value is refused with \"Update zwallet to open this file\"."
     },
     "kdf": {
@@ -46,7 +47,7 @@
       "required": ["app", "app_version"],
       "properties": {
         "app": { "enum": ["zwallet-android", "zwallet-web"] },
-        "app_version": { "type": "string", "maxLength": 64 }
+        "app_version": { "type": "string", "pattern": "^[0-9A-Za-z.+-]{1,64}$" }
       }
     },
     "ciphertext": {

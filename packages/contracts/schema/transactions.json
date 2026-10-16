@@ -38,30 +38,39 @@
   "properties": {
     "id": {
       "type": "string",
-      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010).",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "hlc": {
       "type": "string",
-      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+      "description": "HLC of the last write = max over field_hlc (ADR 0009).",
+      "pattern": "^\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}$"
     },
     "field_hlc": {
       "type": "string",
-      "description": "JSON object {merge_group: hlc} encoded as a string."
+      "description": "JSON object {merge_group: hlc} encoded as a string.",
+      "pattern": "^\\{(?:\"[a-z][a-z0-9_]*\":\"\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}\"(?:,\"[a-z][a-z0-9_]*\":\"\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}\")*)?\\}$"
     },
     "created_at": {
       "type": "integer",
-      "description": "Epoch ms. Immutable; merge keeps the minimum."
+      "description": "Epoch ms. Immutable; merge keeps the minimum.",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "updated_at": {
       "type": "integer",
-      "description": "Epoch ms. Merge keeps the maximum."
+      "description": "Epoch ms. Merge keeps the maximum.",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "deleted_at": {
       "type": [
         "integer",
         "null"
       ],
-      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it.",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "type": {
       "type": "string",
@@ -74,30 +83,32 @@
     },
     "amount_minor": {
       "type": "integer",
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 9007199254740991
     },
     "currency": {
       "type": "string",
-      "minLength": 3,
-      "maxLength": 3
+      "pattern": "^[A-Z]{3}$"
     },
     "original_amount_minor": {
       "type": [
         "integer",
         "null"
       ],
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 9007199254740991
     },
     "original_currency": {
       "type": [
         "string",
         "null"
       ],
-      "minLength": 3,
-      "maxLength": 3
+      "pattern": "^[A-Z]{3}$"
     },
     "occurred_at": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "occurred_tz": {
       "type": "string"
@@ -106,19 +117,22 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "category_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "merchant_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "counterparty_raw": {
       "type": [
@@ -167,19 +181,22 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "description": "Bank reference number from the SMS. LWW (group `ref`) so a re-parse or a user edit can correct it. Not unique: duplicates are an app-level dedup concern."
     },
     "refund_of_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "transfer_peer_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "split_group_id": {
       "type": [
@@ -192,13 +209,15 @@
         "integer",
         "null"
       ],
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 9007199254740991
     },
     "recurring_series_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "location": {
       "type": [
@@ -208,8 +227,7 @@
     }
   },
   "x-immutable": [
-    "source",
-    "external_ref"
+    "source"
   ],
   "x-merge-groups": {
     "amount": [
@@ -256,8 +274,17 @@
     "location": [
       "location"
     ],
+    "ref": [
+      "external_ref"
+    ],
     "deleted": [
       "deleted_at"
     ]
-  }
+  },
+  "x-compact": {
+    "type": "expense",
+    "amount_minor": 1,
+    "occurred_at": 0
+  },
+  "x-compact-keep": []
 }

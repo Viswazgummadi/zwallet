@@ -23,9 +23,9 @@
         "original_currency": null,
         "occurred_at": 1759990000000,
         "occurred_tz": "Asia/Kolkata",
-        "account_id": "acct-sbi",
-        "category_id": "cat-food",
-        "merchant_id": "m-swiggy",
+        "account_id": "01920000-0000-7000-8000-0000000000a1",
+        "category_id": "01920000-0000-7000-8000-0000000000c1",
+        "merchant_id": "01920000-0000-7000-8000-0000000000d1",
         "counterparty_raw": "swiggy.stores@axl",
         "note": null,
         "payment_method": "upi",
@@ -47,7 +47,7 @@
         "created_at": 1760000000000,
         "updated_at": 1760000000000,
         "deleted_at": null,
-        "person_id": "p-rahul",
+        "person_id": "01920000-0000-7000-8000-0000000000e1",
         "kind": "lent",
         "amount_minor": 120000,
         "currency": "INR",
@@ -61,12 +61,12 @@
     "transaction_tags": {
       "base_hlc": "H0",
       "base": {
-        "id": "tt-1",
+        "id": "8d9aa962-cc87-8efb-b591-9bab3db3c4a9",
         "created_at": 1760000000000,
         "updated_at": 1760000000000,
         "deleted_at": null,
         "transaction_id": "01920000-0000-7000-8000-000000000001",
-        "tag_id": "tag-reimbursable"
+        "tag_id": "ab16cd15-412a-8857-9bde-6aac3913633c"
       }
     }
   },
@@ -80,7 +80,7 @@
     { "name": "local newer note kept against an old file → unchanged", "table": "transactions",
       "local": { "set": { "note": "Dinner", "updated_at": 1760000100000 }, "stamp": { "note": "A1" } }, "incoming": {} },
     { "name": "AC-11.2: different groups edited on each side both survive", "table": "transactions",
-      "local": { "set": { "category_id": "cat-groceries" }, "stamp": { "category": "A1" } },
+      "local": { "set": { "category_id": "01920000-0000-7000-8000-0000000000c2" }, "stamp": { "category": "A1" } },
       "incoming": { "set": { "note": "office lunch" }, "stamp": { "note": "B1" } } },
     { "name": "AC-11.3: same group edited on both sides, incoming later wins, local value logged", "table": "transactions",
       "local": { "set": { "note": "from phone" }, "stamp": { "note": "A1" } },
@@ -132,8 +132,8 @@
       "local": { "set": { "created_at": 1760000050000, "updated_at": 1760000300000, "note": "n" }, "stamp": { "note": "A2" } },
       "incoming": { "set": { "updated_at": 1760000200000 } } },
     { "name": "several groups at once: mixed winners", "table": "transactions",
-      "local": { "set": { "category_id": "cat-groceries", "note": "phone note", "review_state": "needs_review" }, "stamp": { "category": "A2", "note": "A1", "review": "A1" } },
-      "incoming": { "set": { "category_id": "cat-restaurants", "note": "laptop note", "payment_method": "card" }, "stamp": { "category": "B1", "note": "B2", "method": "B1" } } },
+      "local": { "set": { "category_id": "01920000-0000-7000-8000-0000000000c2", "note": "phone note", "review_state": "needs_review" }, "stamp": { "category": "A2", "note": "A1", "review": "A1" } },
+      "incoming": { "set": { "category_id": "01920000-0000-7000-8000-0000000000c3", "note": "laptop note", "payment_method": "card" }, "stamp": { "category": "B1", "note": "B2", "method": "B1" } } },
     { "name": "ledger entry: amount edit on one side, note on the other", "table": "ledger_entries",
       "local": { "set": { "amount_minor": 100000 }, "stamp": { "amount": "A1" } },
       "incoming": { "set": { "note": "Goa trip (fuel)" }, "stamp": { "note": "B1" } } },

@@ -26,7 +26,9 @@ const HEADER = (comment) =>
 
 const camel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 const pascal = (s) => camel(s).replace(/^./, (c) => c.toUpperCase());
-const kStr = (s) => JSON.stringify(s);
+const kStr = (s) => JSON.stringify(s).replaceAll('$', '\\$');
+/** A compacted value as a Kotlin literal: String, Long or null. */
+const kVal = (v) => (v === null ? 'null' : typeof v === 'number' ? `${v}L` : kStr(v));
 
 function kotlin({ schemaVersion, formatVersion, tables }) {
   const list = (items, indent) =>
@@ -56,6 +58,17 @@ function kotlin({ schemaVersion, formatVersion, tables }) {
       `                linkedMapOf(`,
       groups,
       `                ),`,
+      Object.keys(t.compact).length
+        ? `            compact =
+                linkedMapOf(
+${Object.entries(t.compact)
+  .map(([c, v]) => `                    ${kStr(c)} to ${kVal(v)},`)
+  .join('\n')}
+                ),`
+        : `            compact = emptyMap(),`,
+      t.compactKeep.length
+        ? `            compactKeep = listOf(${t.compactKeep.map(kStr).join(', ')}),`
+        : `            compactKeep = emptyList(),`,
       `        )`,
     ].join('\n');
   };
@@ -70,10 +83,17 @@ class TableSpec(
     val name: String,
     /** Every column, in schema order. */
     val columns: List<String>,
-    /** Set once at creation and never merged: equal on every copy by construction. */
+    /** Not in any merge group. Set at creation; if two copies disagree, merge keeps the larger value. */
     val immutable: List<String>,
     /** Merge group name → its columns, in declaration order. */
     val groups: Map<String, List<String>>,
+    /**
+     * Tombstone compaction (ARCH §5.5): column → value (String, Long or null) for every column of
+     * every group except \`deleted\`, except [compactKeep]. Compaction re-stamps every group.
+     */
+    val compact: Map<String, Any?>,
+    /** NOT NULL foreign keys that compaction leaves as they are (no placeholder can satisfy them). */
+    val compactKeep: List<String>,
 ) {
     /** Column → the merge group that owns it. */
     val groupOf: Map<String, String> =
@@ -127,6 +147,10 @@ ${Object.entries(t.groups)
   .map(([g, cols]) => `      ${g}: ${arr(cols)},`)
   .join('\n')}
     },
+    compact: {${Object.entries(t.compact)
+      .map(([c, v]) => `\n      ${c}: ${JSON.stringify(v)},`)
+      .join('')}${Object.keys(t.compact).length ? '\n    ' : ''}},
+    compactKeep: ${arr(t.compactKeep)},
   },`,
     )
     .join('\n');
@@ -148,10 +172,17 @@ export interface TableSpec {
   readonly name: string;
   /** Every column, in schema order. */
   readonly columns: readonly string[];
-  /** Set once at creation and never merged: equal on every copy by construction. */
+  /** Not in any merge group. Set at creation; if two copies disagree, merge keeps the larger value. */
   readonly immutable: readonly string[];
   /** Merge group name → its columns. */
   readonly groups: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Tombstone compaction (ARCH §5.5): column → value for every column of every group except
+   * \`deleted\`, except \`compactKeep\`. Compaction re-stamps every group.
+   */
+  readonly compact: Readonly<Record<string, string | number | null>>;
+  /** NOT NULL foreign keys that compaction leaves as they are (no placeholder can satisfy them). */
+  readonly compactKeep: readonly string[];
 }
 
 /** Bookkeeping columns every table has; merged by rule, not by group. */

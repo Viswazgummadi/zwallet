@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mergeRow, frontier, parseFieldHlc, stringifyFieldHlc } from '../lib/merge-reference.mjs';
 import { smsId } from '../lib/ids.mjs';
+import { validate } from '../lib/row-schema.mjs';
 
 const read = (rel) => JSON.parse(readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8'));
 const money = read('fixtures/money.json');
@@ -60,6 +61,17 @@ test('uuid vectors: sender trimming edges are covered and the reference rejects 
   for (const cp of [0xfeff, 0x1c, 0x1f, 0xa0, 0x2028])
     assert.ok(senders.includes(String.fromCodePoint(cp)), `sender vector with U+${cp.toString(16)}`);
   for (const bad of [1.5, 2 ** 53, NaN]) assert.throws(() => smsId('AXISBK', 'b', bad), RangeError);
+});
+
+test('merge vectors: every row of a non-error case is valid against its row schema', () => {
+  const merge = read('fixtures/merge.json');
+  for (const c of merge.cases) {
+    if (c.expected.error) continue;
+    const rowSchema = read(`schema/${c.table}.json`);
+    for (const [side, row] of [['local', c.local], ['incoming', c.incoming], ['expected', c.expected.row]]) {
+      if (row) assert.deepEqual(validate(rowSchema, row), [], `${c.name}: ${side}`);
+    }
+  }
 });
 
 // ── property tests on the reference merge ────────────────────────────────────────────────────

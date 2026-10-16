@@ -11,10 +11,17 @@ class TableSpec(
     val name: String,
     /** Every column, in schema order. */
     val columns: List<String>,
-    /** Set once at creation and never merged: equal on every copy by construction. */
+    /** Not in any merge group. Set at creation; if two copies disagree, merge keeps the larger value. */
     val immutable: List<String>,
     /** Merge group name → its columns, in declaration order. */
     val groups: Map<String, List<String>>,
+    /**
+     * Tombstone compaction (ARCH §5.5): column → value (String, Long or null) for every column of
+     * every group except `deleted`, except [compactKeep]. Compaction re-stamps every group.
+     */
+    val compact: Map<String, Any?>,
+    /** NOT NULL foreign keys that compaction leaves as they are (no placeholder can satisfy them). */
+    val compactKeep: List<String>,
 ) {
     /** Column → the merge group that owns it. */
     val groupOf: Map<String, String> =
@@ -45,7 +52,6 @@ object Contracts {
                     "default_currency",
                     "month_start_day",
                     "my_vpa",
-                    "phone_hash_salt",
                     "prefs",
                 ),
             immutable = emptyList(),
@@ -55,10 +61,18 @@ object Contracts {
                     "currency" to listOf("default_currency"),
                     "month_start" to listOf("month_start_day"),
                     "vpa" to listOf("my_vpa"),
-                    "salt" to listOf("phone_hash_salt"),
                     "prefs" to listOf("prefs"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "display_name" to null,
+                    "default_currency" to "INR",
+                    "month_start_day" to 1L,
+                    "my_vpa" to null,
+                    "prefs" to "{}",
+                ),
+            compactKeep = emptyList(),
         )
 
     val accounts: TableSpec =
@@ -99,6 +113,23 @@ object Contracts {
                     "archived" to listOf("archived"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "name" to "",
+                    "kind" to "other",
+                    "institution" to null,
+                    "last4" to null,
+                    "color_token" to null,
+                    "opening_balance_minor" to 0L,
+                    "currency" to "INR",
+                    "card_cycle_day" to null,
+                    "card_due_day" to null,
+                    "credit_limit_minor" to null,
+                    "balance_snapshot_minor" to null,
+                    "balance_snapshot_at" to null,
+                    "archived" to 0L,
+                ),
+            compactKeep = emptyList(),
         )
 
     val categories: TableSpec =
@@ -135,6 +166,17 @@ object Contracts {
                     "archived" to listOf("archived"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "parent_id" to null,
+                    "name" to "",
+                    "icon" to "",
+                    "color_token" to "",
+                    "counts_as" to "excluded",
+                    "sort_order" to 0L,
+                    "archived" to 0L,
+                ),
+            compactKeep = emptyList(),
         )
 
     val merchants: TableSpec =
@@ -164,6 +206,15 @@ object Contracts {
                     "vpa_patterns" to listOf("vpa_patterns"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "name" to "",
+                    "logo_key" to null,
+                    "default_category_id" to null,
+                    "aliases" to "[]",
+                    "vpa_patterns" to "[]",
+                ),
+            compactKeep = emptyList(),
         )
 
     val tags: TableSpec =
@@ -191,6 +242,12 @@ object Contracts {
                     "color" to listOf("color_token"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "name" to "",
+                    "color_token" to null,
+                ),
+            compactKeep = emptyList(),
         )
 
     val people: TableSpec =
@@ -220,6 +277,15 @@ object Contracts {
                     "avatar" to listOf("avatar_color_token"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "display_name" to "",
+                    "phone_hash" to null,
+                    "vpa" to null,
+                    "contact_lookup_key" to null,
+                    "avatar_color_token" to null,
+                ),
+            compactKeep = emptyList(),
         )
 
     val rules: TableSpec =
@@ -253,6 +319,15 @@ object Contracts {
                     "actions" to listOf("actions"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "name" to null,
+                    "priority" to 0L,
+                    "enabled" to 1L,
+                    "match" to "{}",
+                    "actions" to "[]",
+                ),
+            compactKeep = emptyList(),
         )
 
     val budgets: TableSpec =
@@ -283,6 +358,17 @@ object Contracts {
                     "rollover" to listOf("rollover"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "scope" to "overall",
+                    "category_id" to null,
+                    "amount_minor" to 1L,
+                    "currency" to "INR",
+                    "period" to "month",
+                    "starts_on" to null,
+                    "rollover" to 0L,
+                ),
+            compactKeep = emptyList(),
         )
 
     val recurringSeries: TableSpec =
@@ -326,6 +412,21 @@ object Contracts {
                     "reminder" to listOf("remind_days_before"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "name" to "",
+                    "merchant_id" to null,
+                    "category_id" to null,
+                    "account_id" to null,
+                    "cadence" to "custom",
+                    "interval_days" to null,
+                    "expected_amount_minor" to null,
+                    "currency" to "INR",
+                    "next_due_on" to null,
+                    "status" to "detected",
+                    "remind_days_before" to null,
+                ),
+            compactKeep = emptyList(),
         )
 
     val transactions: TableSpec =
@@ -365,7 +466,6 @@ object Contracts {
             immutable =
                 listOf(
                     "source",
-                    "external_ref",
                 ),
             groups =
                 linkedMapOf(
@@ -381,8 +481,34 @@ object Contracts {
                     "links" to listOf("refund_of_id", "transfer_peer_id", "split_group_id", "my_share_minor"),
                     "recurring" to listOf("recurring_series_id"),
                     "location" to listOf("location"),
+                    "ref" to listOf("external_ref"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "amount_minor" to 1L,
+                    "currency" to "INR",
+                    "original_amount_minor" to null,
+                    "original_currency" to null,
+                    "type" to "expense",
+                    "occurred_at" to 0L,
+                    "occurred_tz" to "Asia/Kolkata",
+                    "account_id" to null,
+                    "category_id" to null,
+                    "merchant_id" to null,
+                    "counterparty_raw" to null,
+                    "note" to null,
+                    "payment_method" to "other",
+                    "review_state" to "confirmed",
+                    "refund_of_id" to null,
+                    "transfer_peer_id" to null,
+                    "split_group_id" to null,
+                    "my_share_minor" to null,
+                    "recurring_series_id" to null,
+                    "location" to null,
+                    "external_ref" to null,
+                ),
+            compactKeep = emptyList(),
         )
 
     val transactionTags: TableSpec =
@@ -408,6 +534,8 @@ object Contracts {
                 linkedMapOf(
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact = emptyMap(),
+            compactKeep = emptyList(),
         )
 
     val ledgerEntries: TableSpec =
@@ -443,6 +571,18 @@ object Contracts {
                     "links" to listOf("transaction_id", "split_group_id"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "kind" to "lent",
+                    "amount_minor" to 1L,
+                    "currency" to "INR",
+                    "occurred_at" to 0L,
+                    "due_on" to null,
+                    "note" to null,
+                    "transaction_id" to null,
+                    "split_group_id" to null,
+                ),
+            compactKeep = listOf("person_id"),
         )
 
     val upcomingItems: TableSpec =
@@ -482,6 +622,20 @@ object Contracts {
                     "status" to listOf("status", "transaction_id"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "kind" to "other",
+                    "title" to "",
+                    "amount_minor" to null,
+                    "currency" to "INR",
+                    "due_on" to "1970-01-01",
+                    "account_id" to null,
+                    "recurring_series_id" to null,
+                    "ledger_entry_id" to null,
+                    "status" to "upcoming",
+                    "transaction_id" to null,
+                ),
+            compactKeep = emptyList(),
         )
 
     val savedFilters: TableSpec =
@@ -509,6 +663,14 @@ object Contracts {
                     "order" to listOf("sort_order"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "name" to "",
+                    "query" to "",
+                    "pinned" to 0L,
+                    "sort_order" to 0L,
+                ),
+            compactKeep = emptyList(),
         )
 
     val insightDismissals: TableSpec =
@@ -536,6 +698,11 @@ object Contracts {
                     "until" to listOf("dismissed_until"),
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact =
+                linkedMapOf(
+                    "dismissed_until" to null,
+                ),
+            compactKeep = emptyList(),
         )
 
     val attachments: TableSpec =
@@ -569,6 +736,8 @@ object Contracts {
                 linkedMapOf(
                     "deleted" to listOf("deleted_at"),
                 ),
+            compact = emptyMap(),
+            compactKeep = emptyList(),
         )
 
     /** Every user-data table in foreign-key order (parents first). */

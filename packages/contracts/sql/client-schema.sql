@@ -12,6 +12,8 @@
 --   created_at  INTEGER epoch ms, set locally
 --   updated_at  INTEGER epoch ms, set locally
 --   deleted_at  INTEGER tombstone; never purged, payload compacted after Trash (ARCH §5.5)
+--               compaction re-stamps every group with one fresh HLC and writes NULL / the
+--               column DEFAULT / the row schema x-compact placeholder (x-compact-keep: kept)
 --
 -- Money is INTEGER minor units + ISO-4217 currency (ADR 0003). Never REAL.
 -- Calendar days are TEXT 'YYYY-MM-DD'; months are TEXT 'YYYY-MM'.
@@ -22,7 +24,7 @@
 -- every change is a new append-only migration on both clients.
 
 -- ── profile ──────────────────────────────────────────────────────────────────────────────────
--- Single row, id = 'me'. phone_hash_salt is exported so phone hashes stay comparable.
+-- Single row, id = 'me'.
 CREATE TABLE profile (
   id               TEXT    NOT NULL PRIMARY KEY CHECK (id = 'me'),
   hlc              TEXT    NOT NULL,
@@ -31,10 +33,9 @@ CREATE TABLE profile (
   updated_at       INTEGER NOT NULL,
   deleted_at       INTEGER,
   display_name     TEXT,
-  default_currency TEXT    NOT NULL DEFAULT 'INR' CHECK (length(default_currency) = 3),
+  default_currency TEXT    NOT NULL DEFAULT 'INR' CHECK (default_currency GLOB '[A-Z][A-Z][A-Z]'),
   month_start_day  INTEGER NOT NULL DEFAULT 1 CHECK (month_start_day BETWEEN 1 AND 28),
   my_vpa           TEXT,
-  phone_hash_salt  TEXT    NOT NULL,
   prefs            TEXT    NOT NULL DEFAULT '{}'
 );
 
@@ -53,7 +54,7 @@ CREATE TABLE accounts (
   last4                  TEXT    CHECK (last4 IS NULL OR length(last4) BETWEEN 2 AND 6),
   color_token            TEXT,
   opening_balance_minor  INTEGER NOT NULL DEFAULT 0,
-  currency               TEXT    NOT NULL DEFAULT 'INR' CHECK (length(currency) = 3),
+  currency               TEXT    NOT NULL DEFAULT 'INR' CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
   card_cycle_day         INTEGER CHECK (card_cycle_day IS NULL OR card_cycle_day BETWEEN 1 AND 31),
   card_due_day           INTEGER CHECK (card_due_day IS NULL OR card_due_day BETWEEN 1 AND 31),
   credit_limit_minor     INTEGER CHECK (credit_limit_minor IS NULL OR credit_limit_minor > 0),
@@ -99,6 +100,8 @@ CREATE TABLE merchants (
 
 -- ── transactions ─────────────────────────────────────────────────────────────────────────────
 -- A transfer is two rows (one per leg) linked by transfer_peer_id (SPEC §4.6).
+-- external_ref (bank reference number) is LWW in its own merge group, so a re-parse or a user
+-- edit can correct it.
 -- location is opt-in and coarse: JSON {"lat_e3": int, "lng_e3": int} (milli-degrees).
 CREATE TABLE transactions (
   id                    TEXT    NOT NULL PRIMARY KEY,
@@ -109,9 +112,9 @@ CREATE TABLE transactions (
   deleted_at            INTEGER,
   type                  TEXT    NOT NULL CHECK (type IN ('expense','income','transfer','refund')),
   amount_minor          INTEGER NOT NULL CHECK (amount_minor > 0),
-  currency              TEXT    NOT NULL DEFAULT 'INR' CHECK (length(currency) = 3),
+  currency              TEXT    NOT NULL DEFAULT 'INR' CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
   original_amount_minor INTEGER CHECK (original_amount_minor IS NULL OR original_amount_minor > 0),
-  original_currency     TEXT    CHECK (original_currency IS NULL OR length(original_currency) = 3),
+  original_currency     TEXT    CHECK (original_currency IS NULL OR original_currency GLOB '[A-Z][A-Z][A-Z]'),
   occurred_at           INTEGER NOT NULL,
   occurred_tz           TEXT    NOT NULL DEFAULT 'Asia/Kolkata',
   account_id            TEXT    REFERENCES accounts (id),
@@ -135,7 +138,9 @@ CREATE TABLE transactions (
   location              TEXT
 );
 CREATE INDEX transactions_occurred ON transactions (occurred_at DESC) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX transactions_external_ref ON transactions (external_ref, account_id)
+-- Deliberately NOT unique: a UNIQUE constraint over merged data can make a valid file impossible
+-- to import (two ids, same ref). Duplicate refs are an app-level dedup/review concern.
+CREATE INDEX transactions_external_ref ON transactions (external_ref, account_id)
   WHERE external_ref IS NOT NULL AND deleted_at IS NULL;
 CREATE INDEX transactions_account ON transactions (account_id, occurred_at);
 CREATE INDEX transactions_category ON transactions (category_id, occurred_at);
@@ -173,7 +178,9 @@ CREATE UNIQUE INDEX transaction_tags_pair ON transaction_tags (transaction_id, t
 CREATE INDEX transaction_tags_tag ON transaction_tags (tag_id);
 
 -- ── people ───────────────────────────────────────────────────────────────────────────────────
--- phone_hash = hex(SHA-256(profile.phone_hash_salt + E.164)). The raw number is never stored.
+-- phone_hash = 'v1:' + salt + ':' + hash with a random per-person 16-byte salt (32 lowercase hex)
+-- and hash = hex(SHA-256(salt bytes || UTF-8 of the normalized E.164 number)). The raw number is
+-- never stored; the salt travels with the row, so no profile-wide secret is needed.
 CREATE TABLE people (
   id                 TEXT    NOT NULL PRIMARY KEY,
   hlc                TEXT    NOT NULL,
@@ -200,7 +207,7 @@ CREATE TABLE ledger_entries (
   kind           TEXT    NOT NULL
                  CHECK (kind IN ('lent','borrowed','repaid_to_me','repaid_by_me')),
   amount_minor   INTEGER NOT NULL CHECK (amount_minor > 0),
-  currency       TEXT    NOT NULL DEFAULT 'INR' CHECK (length(currency) = 3),
+  currency       TEXT    NOT NULL DEFAULT 'INR' CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
   occurred_at    INTEGER NOT NULL,
   due_on         TEXT    CHECK (due_on IS NULL OR due_on GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
   note           TEXT    CHECK (note IS NULL OR length(note) <= 500),
@@ -238,7 +245,7 @@ CREATE TABLE budgets (
   scope        TEXT    NOT NULL CHECK (scope IN ('overall','category','group')),
   category_id  TEXT    REFERENCES categories (id),
   amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
-  currency     TEXT    NOT NULL DEFAULT 'INR' CHECK (length(currency) = 3),
+  currency     TEXT    NOT NULL DEFAULT 'INR' CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
   period       TEXT    NOT NULL DEFAULT 'month' CHECK (period IN ('month')),
   rollover     INTEGER NOT NULL DEFAULT 0 CHECK (rollover IN (0, 1)),
   starts_on    TEXT    CHECK (starts_on IS NULL OR starts_on GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'),
@@ -261,7 +268,7 @@ CREATE TABLE recurring_series (
                         CHECK (cadence IN ('weekly','biweekly','monthly','quarterly','yearly','custom')),
   interval_days         INTEGER CHECK (interval_days IS NULL OR interval_days > 0),
   expected_amount_minor INTEGER CHECK (expected_amount_minor IS NULL OR expected_amount_minor > 0),
-  currency              TEXT    NOT NULL DEFAULT 'INR' CHECK (length(currency) = 3),
+  currency              TEXT    NOT NULL DEFAULT 'INR' CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
   next_due_on           TEXT    CHECK (next_due_on IS NULL OR next_due_on GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
   status                TEXT    NOT NULL DEFAULT 'detected'
                         CHECK (status IN ('detected','confirmed','dismissed')),
@@ -282,7 +289,7 @@ CREATE TABLE upcoming_items (
                       CHECK (kind IN ('mandate','card_bill','emi','loan_due','recurring','other')),
   title               TEXT    NOT NULL,
   amount_minor        INTEGER CHECK (amount_minor IS NULL OR amount_minor > 0),
-  currency            TEXT    NOT NULL DEFAULT 'INR' CHECK (length(currency) = 3),
+  currency            TEXT    NOT NULL DEFAULT 'INR' CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
   due_on              TEXT    NOT NULL CHECK (due_on GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
   account_id          TEXT    REFERENCES accounts (id),
   recurring_series_id TEXT    REFERENCES recurring_series (id),

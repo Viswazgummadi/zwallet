@@ -28,30 +28,39 @@
   "properties": {
     "id": {
       "type": "string",
-      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010)."
+      "description": "UUIDv7, or UUIDv8 for SMS/seed/deterministic rows (ADR 0010).",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "hlc": {
       "type": "string",
-      "description": "HLC of the last write = max over field_hlc (ADR 0009)."
+      "description": "HLC of the last write = max over field_hlc (ADR 0009).",
+      "pattern": "^\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}$"
     },
     "field_hlc": {
       "type": "string",
-      "description": "JSON object {merge_group: hlc} encoded as a string."
+      "description": "JSON object {merge_group: hlc} encoded as a string.",
+      "pattern": "^\\{(?:\"[a-z][a-z0-9_]*\":\"\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}\"(?:,\"[a-z][a-z0-9_]*\":\"\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}\")*)?\\}$"
     },
     "created_at": {
       "type": "integer",
-      "description": "Epoch ms. Immutable; merge keeps the minimum."
+      "description": "Epoch ms. Immutable; merge keeps the minimum.",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "updated_at": {
       "type": "integer",
-      "description": "Epoch ms. Merge keeps the maximum."
+      "description": "Epoch ms. Merge keeps the maximum.",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "deleted_at": {
       "type": [
         "integer",
         "null"
       ],
-      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it."
+      "description": "Epoch ms tombstone; null when live. Only the `deleted` group changes it.",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "name": {
       "type": "string"
@@ -60,19 +69,22 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "category_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "account_id": {
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
     "cadence": {
       "type": "string",
@@ -90,26 +102,27 @@
         "integer",
         "null"
       ],
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 9007199254740991
     },
     "expected_amount_minor": {
       "type": [
         "integer",
         "null"
       ],
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 9007199254740991
     },
     "currency": {
       "type": "string",
-      "minLength": 3,
-      "maxLength": 3
+      "pattern": "^[A-Z]{3}$"
     },
     "next_due_on": {
       "type": [
         "string",
         "null"
       ],
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      "pattern": "^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$"
     },
     "status": {
       "type": "string",
@@ -171,5 +184,10 @@
     "deleted": [
       "deleted_at"
     ]
-  }
+  },
+  "x-compact": {
+    "name": "",
+    "cadence": "custom"
+  },
+  "x-compact-keep": []
 }
