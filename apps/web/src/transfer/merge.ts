@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Per-merge-group last-writer-wins (ADR 0009) with conflict logging by per-node frontiers (ADR 0017).
-// Pure; identical to core:transfer RowMerge (Kotlin) and packages/contracts/lib/merge-reference.mjs.
+// Pure; identical to core:transfer RowMerge (Kotlin) and packages/contracts/lib/merge-reference.mjs,
+// which documents the rules (strict inputs, immutable reconciliation, outcomes, `write`).
 // Vectors: packages/contracts/fixtures/merge.json.
 import type { TableSpec } from '../generated/contracts.ts';
 
@@ -16,12 +17,32 @@ export interface Conflict {
   readonly winning_hlc: string;
 }
 
-export type Outcome = 'inserted' | 'unchanged' | 'updated' | 'deleted';
+/**
+ * User-facing bucket for one row, from merge-group VALUES only (never created_at/updated_at/hlc/
+ * field_hlc). `inserted_deleted` = a tombstone for a row we never had (not "new" in the preview).
+ */
+export type Outcome =
+  'inserted' | 'inserted_deleted' | 'updated' | 'deleted' | 'restored' | 'unchanged';
 
 export interface MergeResult {
   readonly row: Row;
   readonly conflicts: readonly Conflict[];
   readonly outcome: Outcome;
+  /** The merged row differs from local in any column (stamps, hlc, created_at ...): persist it. */
+  readonly write: boolean;
+}
+
+export type MergeErrorCode = 'malformed_field_hlc' | 'missing_column';
+
+/** An input the merge refuses: the importer rejects the whole file before touching the DB. */
+export class MergeError extends Error {
+  constructor(
+    readonly code: MergeErrorCode,
+    detail: string,
+  ) {
+    super(`${code}: ${detail}`);
+    this.name = 'MergeError';
+  }
 }
 
 /** Total order for tie-breaks: null < integer < string; strings by UTF-16 code unit. */
@@ -32,14 +53,20 @@ export function compareValues(a: Value, b: Value): number {
   return a < b ? -1 : 1;
 }
 
-const FIELD_HLC = /^\{(?:"[a-z][a-z0-9_]*":"[0-9a-f-]*"(?:,"[a-z][a-z0-9_]*":"[0-9a-f-]*")*)?\}$/;
+const ENTRY = '"[a-z][a-z0-9_]*":"[0-9]{13}-[0-9a-f]{4}-[0-9a-f]{8}"';
+const FIELD_HLC = new RegExp(`^\\{(?:${ENTRY}(?:,${ENTRY})*)?\\}$`);
 
-/** field_hlc is JSON with sorted keys and no whitespace: byte-identical on both platforms. */
-export function parseFieldHlc(text: string): Record<string, string> {
-  if (!FIELD_HLC.test(text)) throw new Error('malformed field_hlc');
-  return JSON.parse(text) as Record<string, string>;
+/** group → stamp. Null-prototype, so no group name ("constructor") can hit Object.prototype. */
+export type Stamps = Record<string, string>;
+
+/** Strict: a string of canonical JSON whose stamps are all well-formed HLCs. "" is malformed. */
+export function parseFieldHlc(value: Value | undefined): Stamps {
+  if (typeof value !== 'string' || !FIELD_HLC.test(value))
+    throw new MergeError('malformed_field_hlc', String(value));
+  return Object.assign(Object.create(null) as Stamps, JSON.parse(value) as Record<string, string>);
 }
 
+/** field_hlc is JSON with sorted keys and no whitespace: byte-identical on both platforms. */
 export function stringifyFieldHlc(map: Readonly<Record<string, string>>): string {
   return JSON.stringify(
     Object.fromEntries(
@@ -54,12 +81,19 @@ const nodeOf = (hlc: string): string => hlc.slice(hlc.lastIndexOf('-') + 1);
 const maxStr = (a: string, b: string): string => (a > b ? a : b);
 const text = (row: Row, col: string): string => row[col] as string;
 const int = (row: Row, col: string): number => row[col] as number;
+const get = (row: Row, col: string): Value => row[col] as Value;
+
+function checkColumns(spec: TableSpec, row: Row): void {
+  for (const c of spec.columns)
+    if (!Object.hasOwn(row, c)) throw new MergeError('missing_column', c);
+}
 
 /** node id → highest HLC from that node in any group stamp of these rows. */
 export function frontier(rows: Iterable<Row>): Record<string, string> {
-  const f: Record<string, string> = {};
+  const f: Record<string, string> = Object.create(null) as Record<string, string>;
   for (const row of rows) {
-    for (const h of Object.values(parseFieldHlc(text(row, 'field_hlc')))) {
+    if (!Object.hasOwn(row, 'field_hlc')) throw new MergeError('missing_column', 'field_hlc');
+    for (const h of Object.values(parseFieldHlc(row.field_hlc))) {
       const n = nodeOf(h);
       f[n] = maxStr(f[n] ?? '', h);
     }
@@ -68,7 +102,7 @@ export function frontier(rows: Iterable<Row>): Record<string, string> {
 }
 
 const seen = (hlc: string, front: Frontier): boolean =>
-  hlc === '' || hlc <= (front[nodeOf(hlc)] ?? '');
+  hlc === '' || hlc <= (Object.hasOwn(front, nodeOf(hlc)) ? front[nodeOf(hlc)]! : '');
 
 export function mergeRow(
   spec: TableSpec,
@@ -76,25 +110,34 @@ export function mergeRow(
   incoming: Row,
   ctx: { localFrontier?: Frontier; incomingFrontier?: Frontier } = {},
 ): MergeResult {
-  if (!local) return { row: { ...incoming }, conflicts: [], outcome: 'inserted' };
+  checkColumns(spec, incoming);
+  if (local) checkColumns(spec, local);
+  const inf = parseFieldHlc(incoming.field_hlc);
+  if (!local) {
+    return {
+      row: { ...incoming },
+      conflicts: [],
+      outcome: incoming.deleted_at === null ? 'inserted' : 'inserted_deleted',
+      write: true,
+    };
+  }
+  const lf = parseFieldHlc(local.field_hlc);
   const localFrontier = ctx.localFrontier ?? frontier([local]);
   const incomingFrontier = ctx.incomingFrontier ?? frontier([incoming]);
-  const lf = parseFieldHlc(text(local, 'field_hlc'));
-  const inf = parseFieldHlc(text(incoming, 'field_hlc'));
 
   const out: Record<string, Value> = { ...local };
-  const merged: Record<string, string> = {};
+  const merged: Stamps = Object.create(null) as Stamps;
   const conflicts: Conflict[] = [];
   for (const [group, cols] of Object.entries(spec.groups)) {
     const lh = lf[group] ?? '';
     const ih = inf[group] ?? '';
     let cmp = 0;
     for (const c of cols) {
-      cmp = compareValues(incoming[c] ?? null, local[c] ?? null);
+      cmp = compareValues(get(incoming, c), get(local, c));
       if (cmp !== 0) break;
     }
     const incomingWins = ih > lh || (ih === lh && cmp > 0);
-    if (incomingWins) for (const c of cols) out[c] = incoming[c] ?? null;
+    if (incomingWins) for (const c of cols) out[c] = get(incoming, c);
     const h = maxStr(lh, ih);
     if (h !== '') merged[group] = h;
     if (cmp !== 0) {
@@ -105,16 +148,20 @@ export function mergeRow(
         conflicts.push({
           group,
           losing_side: incomingWins ? 'local' : 'incoming',
-          losing_values: Object.fromEntries(cols.map((c) => [c, loser[c] ?? null])),
+          losing_values: Object.fromEntries(cols.map((c) => [c, get(loser, c)])),
           losing_hlc: loserH,
           winning_hlc: winnerH,
         });
       }
     }
   }
-  // Stamps for groups this schema doesn't know are kept as max (forward compatibility).
+  // Immutable columns should be equal on every copy; if they are not, the larger value wins, so
+  // the merge still converges. Not a conflict: there is nothing for the user to choose.
+  for (const c of spec.immutable)
+    if (compareValues(get(incoming, c), get(local, c)) > 0) out[c] = get(incoming, c);
+  // Stamps for groups this schema doesn't know are kept as max, whatever their name.
   for (const [g, h] of [...Object.entries(lf), ...Object.entries(inf)]) {
-    if (!(g in spec.groups)) merged[g] = maxStr(merged[g] ?? '', h);
+    if (!Object.hasOwn(spec.groups, g)) merged[g] = maxStr(merged[g] ?? '', h);
   }
 
   out.field_hlc = stringifyFieldHlc(merged);
@@ -124,13 +171,22 @@ export function mergeRow(
   out.created_at = Math.min(int(local, 'created_at'), int(incoming, 'created_at'));
   out.updated_at = Math.max(int(local, 'updated_at'), int(incoming, 'updated_at'));
 
-  const unchanged = spec.columns.every(
-    (c) => compareValues(out[c] ?? null, local[c] ?? null) === 0,
-  );
-  const outcome: Outcome = unchanged
-    ? 'unchanged'
-    : local.deleted_at === null && out.deleted_at !== null
+  const differs = (c: string): boolean => compareValues(get(out, c), get(local, c)) !== 0;
+  const userColumns = [
+    ...spec.immutable,
+    ...Object.entries(spec.groups)
+      .filter(([g]) => g !== 'deleted')
+      .flatMap(([, cols]) => cols),
+  ];
+  const wasDeleted = local.deleted_at !== null;
+  const isDeleted = out.deleted_at !== null;
+  const outcome: Outcome =
+    !wasDeleted && isDeleted
       ? 'deleted'
-      : 'updated';
-  return { row: out, conflicts, outcome };
+      : wasDeleted && !isDeleted
+        ? 'restored'
+        : userColumns.some(differs)
+          ? 'updated'
+          : 'unchanged';
+  return { row: out, conflicts, outcome, write: spec.columns.some(differs) };
 }

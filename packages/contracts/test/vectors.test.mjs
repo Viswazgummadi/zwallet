@@ -74,6 +74,24 @@ test('merge vectors: every row of a non-error case is valid against its row sche
   }
 });
 
+test('merge vectors cover the strict-input errors, prototype-named groups, immutables and compaction', () => {
+  const { cases, compaction } = read('fixtures/merge.json');
+  const errors = new Map(cases.filter((c) => c.expected.error).map((c) => [c.name, c.expected.error]));
+  const has = (re, code) => assert.ok([...errors].some(([n, e]) => re.test(n) && e === code), `${re} → ${code}`);
+  has(/whitespace/, 'malformed_field_hlc');
+  has(/non-hex/, 'malformed_field_hlc');
+  has(/"9"/, 'malformed_field_hlc');
+  has(/empty-string/, 'malformed_field_hlc');
+  has(/incoming row missing a column/, 'missing_column');
+  assert.ok(cases.some((c) => /"constructor"/.test(c.name) && !c.expected.error), 'constructor group vector');
+  for (const outcome of ['inserted', 'inserted_deleted', 'updated', 'deleted', 'restored', 'unchanged']) {
+    assert.ok(cases.some((c) => c.expected.outcome === outcome), `an outcome vector for ${outcome}`);
+  }
+  assert.ok(cases.some((c) => c.expected.outcome === 'unchanged' && c.expected.write === true), 'unchanged + write');
+  assert.ok(cases.some((c) => /compacted tombstone beats an older full row and never resurrects/.test(c.name)));
+  assert.equal(Object.keys(compaction).length, 16, 'compaction constants listed for every user table');
+});
+
 // ── property tests on the reference merge ────────────────────────────────────────────────────
 function rng(seed) {
   let s = seed >>> 0;

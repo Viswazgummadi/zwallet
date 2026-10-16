@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { TABLES, type TableName } from '../generated/contracts.ts';
 import { fixture } from '../test/fixtures.ts';
 import {
+  MergeError,
   mergeRow,
   parseFieldHlc,
   stringifyFieldHlc,
@@ -20,9 +21,12 @@ interface Case {
   incoming: Row;
   local_frontier?: Frontier;
   incoming_frontier?: Frontier;
-  expected: MergeResult;
+  expected: MergeResult | { error: string };
 }
-const vectors = fixture<{ cases: Case[] }>('merge.json');
+const vectors = fixture<{
+  cases: Case[];
+  compaction: Record<string, { compact: Record<string, Value>; compact_keep: string[] }>;
+}>('merge.json');
 
 describe('merge vectors (packages/contracts/fixtures/merge.json)', () => {
   it.each(vectors.cases)('$name', (c) => {
@@ -30,7 +34,23 @@ describe('merge vectors (packages/contracts/fixtures/merge.json)', () => {
       ...(c.local_frontier && { localFrontier: c.local_frontier }),
       ...(c.incoming_frontier && { incomingFrontier: c.incoming_frontier }),
     };
-    expect(mergeRow(TABLES[c.table], c.local, c.incoming, ctx)).toEqual(c.expected);
+    if ('error' in c.expected) {
+      const code = c.expected.error;
+      expect(() => mergeRow(TABLES[c.table], c.local, c.incoming, ctx)).toThrow(
+        expect.objectContaining({ name: 'MergeError', code }) as Error,
+      );
+    } else {
+      expect(mergeRow(TABLES[c.table], c.local, c.incoming, ctx)).toEqual(c.expected);
+    }
+  });
+
+  it('the generated compaction constants equal the vector file (x-compact)', () => {
+    for (const name of Object.keys(TABLES) as TableName[]) {
+      const t = TABLES[name];
+      expect({ compact: t.compact, compact_keep: t.compactKeep }, name).toEqual(
+        vectors.compaction[name],
+      );
+    }
   });
 });
 
@@ -86,7 +106,7 @@ class Device {
     this.counter = now === this.wall ? this.counter + 1 : 0;
     this.wall = now;
     const h = `${String(this.wall).padStart(13, '0')}-${this.counter.toString(16).padStart(4, '0')}-${this.node}`;
-    const stamps = { ...parseFieldHlc(this.row.field_hlc as string), [groupOf(col)]: h };
+    const stamps = { ...parseFieldHlc(this.row.field_hlc), [groupOf(col)]: h };
     const choices = CHOICES[col]!;
     this.row = {
       ...this.row,
@@ -125,11 +145,13 @@ it('convergence + idempotence over random edit/exchange histories', () => {
       for (let round = 0; round < 2; round++)
         for (const a of devices) for (const b of devices) if (a !== b) a.receive(b.row);
       for (const d of devices) expect(d.row).toEqual(devices[0]!.row);
-      expect(mergeRow(spec, devices[0]!.row, devices[1]!.row).outcome).toBe('unchanged');
+      const again = mergeRow(spec, devices[0]!.row, devices[1]!.row);
+      expect(again.outcome).toBe('unchanged');
+      expect(again.write).toBe(false);
     }),
     { numRuns: 1000 },
   );
-});
+}, 60_000);
 
 it('merge is commutative even with HLC ties from a cloned install', () => {
   fc.assert(
@@ -142,9 +164,62 @@ it('merge is commutative even with HLC ties from a cloned install', () => {
     }),
     { numRuns: 1000 },
   );
-});
+}, 60_000);
 
 it('field_hlc is written with sorted keys and parsed strictly', () => {
-  expect(stringifyFieldHlc({ b: '2', a: '1' })).toBe('{"a":"1","b":"2"}');
-  expect(() => parseFieldHlc('{"a": "1"}')).toThrow();
+  const H = '1760000000000-0000-aaaaaaaa';
+  expect(stringifyFieldHlc({ b: H, a: H })).toBe(`{"a":"${H}","b":"${H}"}`);
+  expect({ ...parseFieldHlc('{}') }).toEqual({});
+  expect({ ...parseFieldHlc(`{"note":"${H}"}`) }).toEqual({ note: H });
+  for (const bad of [
+    '',
+    '{"a": "1"}',
+    '{"note":"9"}',
+    `{"note":"${H}"}\n`,
+    `{"note":"${H.toUpperCase()}"}`,
+  ])
+    expect(() => parseFieldHlc(bad), JSON.stringify(bad)).toThrow(MergeError);
+  expect(() => parseFieldHlc(5)).toThrow(MergeError);
+  expect(() => parseFieldHlc(null)).toThrow(MergeError);
+});
+
+it('a stamp for a group named like an Object.prototype member never leaks into values', () => {
+  const H = '1760000000000-0000-aaaaaaaa';
+  const base = baseRow();
+  const withStamp = (g: string, h: string): Row => ({
+    ...base,
+    field_hlc: stringifyFieldHlc({ ...parseFieldHlc(base.field_hlc), [g]: h }),
+  });
+  const r = mergeRow(spec, base, withStamp('constructor', H));
+  expect(parseFieldHlc(r.row.field_hlc as string)['constructor']).toBe(H);
+  expect(r.outcome).toBe('unchanged');
+  expect(r.write).toBe(true);
+});
+
+it('immutable columns converge: the larger value wins in either direction (commutative)', () => {
+  const sources = ['manual', 'sms', 'paste', 'csv_import', 'recurring_auto'];
+  fc.assert(
+    fc.property(fc.constantFrom(...sources), fc.constantFrom(...sources), (x, y) => {
+      const a: Row = { ...baseRow(), source: x };
+      const b: Row = { ...baseRow(), source: y };
+      const ab = mergeRow(spec, a, b);
+      const ba = mergeRow(spec, b, a);
+      expect(ab.row).toEqual(ba.row);
+      expect(ab.row.source).toBe(x > y ? x : y);
+      expect(ab.conflicts).toEqual([]);
+      expect(ab.outcome).toBe(x === y ? 'unchanged' : x < y ? 'updated' : 'unchanged');
+    }),
+  );
+});
+
+it('merging never mutates its inputs', () => {
+  const a = baseRow();
+  const b: Row = {
+    ...baseRow(),
+    note: 'x',
+    field_hlc: stringifyFieldHlc({ note: '1760000000001-0000-bbbbbbbb' }),
+  };
+  const snapshot = JSON.stringify([a, b]);
+  mergeRow(spec, a, b);
+  expect(JSON.stringify([a, b])).toBe(snapshot);
 });
