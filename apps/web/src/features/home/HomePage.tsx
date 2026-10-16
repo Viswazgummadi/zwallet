@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { useId, useRef, useState, type DragEvent } from 'react';
+import { isSharedOrigin, sharedOriginWarning } from '../../app/origin.ts';
 import { Icon } from '../../ui/Icon.tsx';
 
 /**
@@ -21,8 +22,19 @@ export function HomePage() {
     pick(e.dataTransfer.files[0]);
   };
 
+  const shared = isSharedOrigin(window.location, import.meta.env.BASE_URL);
+
   return (
-    <div className="flex justify-center py-8 expanded:py-16">
+    <div className="flex flex-col items-center gap-6 py-8 expanded:py-16">
+      {shared && (
+        <div
+          role="alert"
+          className="flex w-full max-w-xl items-start gap-3 rounded-md border border-outline bg-error-container p-4 text-body-sm text-on-error-container"
+        >
+          <Icon name="info" className="size-5 shrink-0" />
+          <p>{sharedOriginWarning(window.location.hostname)}</p>
+        </div>
+      )}
       <section
         aria-labelledby="first-run-title"
         className="w-full max-w-xl rounded-lg bg-surface-raised p-6 medium:p-8"
@@ -44,7 +56,7 @@ export function HomePage() {
           }}
           onDrop={onDrop}
           className={`mt-6 flex flex-col items-center gap-3 rounded-md border-2 border-dashed px-4 py-8 text-center ${
-            dragging ? 'border-primary bg-primary-container/40' : 'border-hairline'
+            dragging ? 'border-primary bg-primary-container/40' : 'border-outline'
           }`}
         >
           <Icon name="upload" className="size-8 text-primary" />
@@ -74,7 +86,7 @@ export function HomePage() {
           onClick={() => {
             setStatus('Starting fresh arrives with the ledger. Nothing was created yet.');
           }}
-          className="mt-4 min-h-12 w-full rounded-md border border-hairline text-label text-ink-primary hover:bg-surface-sunken"
+          className="mt-4 min-h-12 w-full rounded-md border border-outline text-label text-ink-primary hover:bg-surface-sunken"
         >
           Start fresh
         </button>
