@@ -3,7 +3,7 @@
 import { PLACEHOLDERS } from './copy.ts';
 import { PlaceholderPage } from './PlaceholderPage.tsx';
 
-export const transactions = () => <PlaceholderPage copy={PLACEHOLDERS.transactions} />;
+export const activity = () => <PlaceholderPage copy={PLACEHOLDERS.activity} />;
 export const insights = () => <PlaceholderPage copy={PLACEHOLDERS.insights} />;
 export const people = () => <PlaceholderPage copy={PLACEHOLDERS.people} />;
 export const accounts = () => <PlaceholderPage copy={PLACEHOLDERS.accounts} />;
