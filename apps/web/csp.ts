@@ -3,7 +3,15 @@
  * ARCHITECTURE §8.2: GitHub Pages can't set headers, so the CSP ships as a <meta>. Nothing but the
  * app's own origin may be contacted. Injected only into production builds (the dev server needs
  * inline styles for HMR); e2e runs against the production build.
+ *
+ * The one inline script (theme-init, applied before first paint) is allowed by its SHA-256 hash,
+ * computed from the built index.html — never 'unsafe-inline'.
  */
-export const CSP =
-  "default-src 'self'; connect-src 'self'; script-src 'self' 'wasm-unsafe-eval'; " +
-  "img-src 'self' data: blob:; style-src 'self'; object-src 'none'; base-uri 'none'";
+export function cspWith(scriptHashes: readonly string[]): string {
+  const hashes = scriptHashes.map((h) => ` 'sha256-${h}'`).join('');
+  return (
+    `default-src 'self'; connect-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hashes}; ` +
+    "img-src 'self' data: blob:; style-src 'self'; object-src 'none'; base-uri 'none'; " +
+    "form-action 'none'"
+  );
+}

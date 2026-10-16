@@ -14,8 +14,8 @@ export interface NavItem {
 export const NAV: readonly NavItem[] = [
   { to: '/', label: 'Home', icon: 'home', selectedIcon: 'home_fill', primary: true },
   {
-    to: '/transactions',
-    label: 'Transactions',
+    to: '/activity',
+    label: 'Activity',
     icon: 'receipt_long',
     selectedIcon: 'receipt_long_fill',
     primary: true,

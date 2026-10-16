@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Appearance (SPEC §13): system / light / dark. A per-browser convenience kept in localStorage —
-// which may be unavailable (private mode), so every access is guarded. public/theme-init.js
-// applies the same key before first paint.
+// which may be unavailable (private mode), so every access is guarded. the inline script in
+// index.html applies the same key before first paint.
 
 export type ThemePref = 'system' | 'light' | 'dark';
 export const THEME_KEY = 'zw.theme';
