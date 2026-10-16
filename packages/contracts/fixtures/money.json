@@ -69,6 +69,8 @@
       { "minor": -16500, "currency": "INR", "style": "list", "text": "−₹165" },
       { "minor": 123456789, "currency": "USD", "style": "full", "text": "$1,234,567.89" },
       { "minor": 99, "currency": "EUR", "style": "full", "text": "€0.99" },
+      { "minor": 123456789, "currency": "GBP", "style": "full", "text": "£1,234,567.89" },
+      { "minor": -500, "currency": "GBP", "style": "list", "text": "−£5" },
       { "minor": 1234567, "currency": "JPY", "style": "full", "text": "¥1,234,567" },
       { "minor": 1234567, "currency": "JPY", "style": "list", "text": "¥1,234,567" },
       { "minor": 1234, "currency": "KWD", "style": "full", "text": "KWD 1.234" },
@@ -106,7 +108,7 @@
     ]
   },
   "expression": {
-    "description": "Quick-add expressions (SPEC AC-4.2.4), evaluated exactly. Grammar: expr = term (('+' | '-' | '−') term)*; term = number (('×' | '*') number)*; number = parse rules above (commas allowed, ≤ exponent decimals). Spaces are ignored. A single trailing operator is ignored (live preview while typing). Each term's product is computed exactly, then rounded once, half-up, to minor units. The result may be zero or negative (the UI disables Save); only errors are reported: empty, syntax, too_many_decimals, overflow (any intermediate or final |value| > max_minor).",
+    "description": "Quick-add expressions (SPEC AC-4.2.4), evaluated exactly. Grammar: expr = term (('+' | '-' | '−') term)*; term = number (('×' | '*') number)*; number = parse rules above (commas allowed, ≤ exponent decimals). Spaces are ignored. A single trailing operator is ignored (live preview while typing); what remains must end in a number, so two trailing operators ('5++', '5+×') are a syntax error. Each term's product is computed exactly, then rounded once, half-up, to minor units. The result may be zero or negative (the UI disables Save); only errors are reported: empty, syntax, too_many_decimals, overflow (any intermediate or final |value| > max_minor).",
     "cases": [
       { "input": "120+45", "currency": "INR", "minor": 16500 },
       { "input": "0.1+0.2", "currency": "INR", "minor": 30 },
@@ -124,6 +126,14 @@
       { "input": "2×3×1.5", "currency": "INR", "minor": 900 },
       { "input": "120+", "currency": "INR", "minor": 12000 },
       { "input": "120×", "currency": "INR", "minor": 12000 },
+      { "input": "5++", "currency": "INR", "error": "syntax" },
+      { "input": "5+×", "currency": "INR", "error": "syntax" },
+      { "input": "5×+", "currency": "INR", "error": "syntax" },
+      { "input": "120--", "currency": "INR", "error": "syntax" },
+      { "input": "5+-", "currency": "INR", "error": "syntax" },
+      { "input": "5−−", "currency": "INR", "error": "syntax" },
+      { "input": "+", "currency": "INR", "error": "syntax" },
+      { "input": "×", "currency": "INR", "error": "syntax" },
       { "input": "100-200", "currency": "INR", "minor": -10000 },
       { "input": "100-100", "currency": "INR", "minor": 0 },
       { "input": "42", "currency": "INR", "minor": 4200 },

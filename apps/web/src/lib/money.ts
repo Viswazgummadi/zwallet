@@ -120,9 +120,11 @@ export function evaluateExpression(input: string, currencyCode: string): MoneyRe
     else return err('syntax');
     i++;
   }
+  // Drop exactly one trailing operator (live preview). What remains must be `num (op num)*`:
+  // odd length and alternating, so `5++` or `5+×` is a syntax error rather than an empty term.
   const body =
     tokens.length > 0 && 'op' in tokens[tokens.length - 1]! ? tokens.slice(0, -1) : tokens;
-  if (body.length === 0 || !body.every((t, i) => (i % 2 === 0) === 'num' in t))
+  if (body.length % 2 !== 1 || !body.every((t, i) => (i % 2 === 0) === 'num' in t))
     return err('syntax');
 
   const scale = pow10(cur.exponent);

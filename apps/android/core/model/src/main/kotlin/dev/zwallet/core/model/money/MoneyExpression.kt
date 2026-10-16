@@ -29,8 +29,10 @@ object MoneyExpression {
         val s = input.filter { it != ' ' }
         if (s.isEmpty()) return MoneyResult.Err(MoneyError.EMPTY)
         val tokens = tokenize(s) ?: return MoneyResult.Err(MoneyError.SYNTAX)
+        // Drop exactly one trailing operator (live preview). What remains must be `num (op num)*`:
+        // odd length and alternating, so `5++` or `5+×` is a syntax error rather than an empty term.
         val body = if (tokens.last() is Token.Op) tokens.dropLast(1) else tokens
-        if (body.isEmpty() || !isAlternating(body)) return MoneyResult.Err(MoneyError.SYNTAX)
+        if (body.size % 2 != 1 || !isAlternating(body)) return MoneyResult.Err(MoneyError.SYNTAX)
 
         val scale = pow10(currency.exponent)
         var sum = BigInteger.ZERO

@@ -5,6 +5,7 @@ import dev.zwallet.core.model.Fixtures
 import dev.zwallet.core.model.long
 import dev.zwallet.core.model.obj
 import dev.zwallet.core.model.str
+import dev.zwallet.core.model.strOrNull
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.list
 import io.kotest.property.arbitrary.long
@@ -14,6 +15,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
@@ -38,6 +40,11 @@ class HlcVectorsTest {
         }
 
     @Test
+    fun `drift limit is 24 h`() {
+        assertEquals(24L * 60 * 60 * 1000, HlcClock.MAX_DRIFT_MS)
+    }
+
+    @Test
     fun `object order equals text order`() {
         val texts = hlc.getValue("order").jsonArray.map { it.jsonPrimitive.content }
         assertEquals(texts, texts.map { Hlc.parse(it)!! }.sorted().map { it.toString() })
@@ -52,20 +59,31 @@ class HlcVectorsTest {
                 val last = c.str("last").takeIf { it.isNotEmpty() }?.let { Hlc.parse(it)!! }
                 val clock = HlcClock(c.str("node"), last) { phys }
                 for (step in c.getValue("steps").jsonArray.map { it.obj() }) {
-                    when (step.str("op")) {
-                        "now" -> {
-                            phys = step.long("phys")
-                            assertEquals(step.str("expect"), clock.now().toString())
-                        }
+                    phys = step.long("phys")
+                    val run: () -> Hlc? =
+                        when (step.str("op")) {
+                            "now" -> {
+                                { clock.now() }
+                            }
 
-                        "receive" -> {
-                            clock.receive(Hlc.parse(step.str("hlc"))!!)
-                            assertEquals(step.str("expect_last"), clock.last.toString())
-                        }
+                            "receive" -> {
+                                { clock.receive(Hlc.parse(step.str("hlc"))!!).let { null } }
+                            }
 
-                        else -> {
-                            error("unknown op")
+                            else -> {
+                                error("unknown op")
+                            }
                         }
+                    val code = step.strOrNull("error")
+                    if (code != null) {
+                        val e = assertThrows(HlcException::class.java) { run() }
+                        assertEquals(code, e.error.code)
+                        assertEquals(step.str("expect_last"), clock.last?.toString() ?: "")
+                    } else if (step.str("op") == "now") {
+                        assertEquals(step.str("expect"), run().toString())
+                    } else {
+                        run()
+                        assertEquals(step.str("expect_last"), clock.last?.toString() ?: "")
                     }
                 }
             }

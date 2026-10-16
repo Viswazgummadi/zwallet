@@ -60,3 +60,8 @@ it('newUuidV7 is RFC 9562 version 7 and sorts by time', () => {
   expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   expect(a < b).toBe(true);
 });
+
+it('smsId rejects a date that is not a safe integer', async () => {
+  for (const bad of [1.5, Number.MAX_SAFE_INTEGER + 1, Number.NaN, Number.POSITIVE_INFINITY])
+    await expect(smsId('AXISBK', 'body', bad)).rejects.toThrow(RangeError);
+});

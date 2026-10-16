@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mergeRow, frontier, parseFieldHlc, stringifyFieldHlc } from '../lib/merge-reference.mjs';
+import { smsId } from '../lib/ids.mjs';
 
 const read = (rel) => JSON.parse(readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8'));
 const money = read('fixtures/money.json');
@@ -23,6 +24,10 @@ test('money vectors are well-formed and within MAX_MINOR', () => {
   }
   const has = (s, text) => money.expression.cases.some((c) => c.input === text);
   assert.ok(has('expression', '0.1+0.2'), 'AC-4.2.4 vector present');
+  for (const t of ['5++', '120--']) assert.ok(has('expression', t), `two trailing operators: ${t}`);
+  // Every currency in the shared table is exercised by at least one format vector.
+  for (const code of Object.keys(money.currencies).filter((k) => k !== 'description'))
+    assert.ok(money.format.cases.some((c) => c.currency === code), `format vector for ${code}`);
 });
 
 test('hlc vectors: order list is sorted and parse cases round-trip', () => {
@@ -33,6 +38,28 @@ test('hlc vectors: order list is sorted and parse cases round-trip', () => {
     if (c.error) assert.equal(m, null, c.text);
     else assert.deepEqual([Number(m[1]), parseInt(m[2], 16), m[3]], [c.wall, c.counter, c.node]);
   }
+});
+
+test('hlc clock vectors: every step has a physical clock, errors keep last, drift and MAX_WALL are covered', () => {
+  const errors = new Set();
+  for (const c of hlc.clock)
+    for (const s of c.steps) {
+      assert.ok(Number.isSafeInteger(s.phys), `${c.name}: step without phys`);
+      if (s.error) {
+        assert.ok(['clock_ahead', 'wall_out_of_range'].includes(s.error), s.error);
+        assert.ok('expect_last' in s, `${c.name}: error step must state the unchanged last`);
+        errors.add(`${s.op}:${s.error}`);
+      }
+    }
+  assert.deepEqual([...errors].sort(), ['now:wall_out_of_range', 'receive:clock_ahead']);
+});
+
+test('uuid vectors: sender trimming edges are covered and the reference rejects unsafe dates', () => {
+  const uuid = read('fixtures/uuid.json');
+  const senders = uuid.sms.map((c) => c.sender).join('');
+  for (const cp of [0xfeff, 0x1c, 0x1f, 0xa0, 0x2028])
+    assert.ok(senders.includes(String.fromCodePoint(cp)), `sender vector with U+${cp.toString(16)}`);
+  for (const bad of [1.5, 2 ** 53, NaN]) assert.throws(() => smsId('AXISBK', 'b', bad), RangeError);
 });
 
 // ── property tests on the reference merge ────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ interface Section {
 }
 const money = fixture<{
   max_minor: number;
+  currencies: Record<string, unknown>;
   parse: Section;
   format: Section;
   compact: Section;
@@ -34,6 +35,19 @@ const cur = (code: string) => {
 describe('money vectors (packages/contracts/fixtures/money.json)', () => {
   it('shares MAX_MINOR with Kotlin', () => {
     expect(MAX_MINOR).toBe(money.max_minor);
+  });
+  it('has exactly the shared currency table', () => {
+    const shared = Object.fromEntries(
+      Object.entries(money.currencies).filter(([k]) => k !== 'description'),
+    );
+    const mine = Object.fromEntries(
+      Object.values(CURRENCIES).map((c) => [
+        c.code,
+        { exponent: c.exponent, symbol: c.symbol, grouping: c.grouping },
+      ]),
+    );
+    expect(mine).toEqual(shared);
+    for (const [code, c] of Object.entries(CURRENCIES)) expect(c.code).toBe(code);
   });
   it.each(money.parse.cases)('parse $input $currency', (c) => {
     expect(parseMoney(c.input!, c.currency)).toEqual(expected(c));

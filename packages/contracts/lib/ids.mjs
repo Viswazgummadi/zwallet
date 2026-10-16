@@ -38,15 +38,19 @@ const WS_RANGES = [
   [0x2028, 0x2029], [0x202f, 0x202f], [0x205f, 0x205f], [0x3000, 0x3000],
 ];
 const ch = (n) => String.fromCodePoint(n);
-export const WHITE_SPACE = new RegExp(
-  `[${WS_RANGES.map(([a, b]) => (a === b ? ch(a) : `${ch(a)}-${ch(b)}`)).join('')}]+`,
-  'g',
-);
+const WS_CLASS = `[${WS_RANGES.map(([a, b]) => (a === b ? ch(a) : `${ch(a)}-${ch(b)}`)).join('')}]`;
+export const WHITE_SPACE = new RegExp(`${WS_CLASS}+`, 'g');
+const EDGE_WHITE_SPACE = new RegExp(`^${WS_CLASS}+|${WS_CLASS}+$`, 'g');
 
-/** Strip the DLT operator prefix ("VM-") and the -S/-T/-P suffix, then upper-case. */
+/** Trim Unicode White_Space only (String.prototype.trim also strips U+FEFF; Kotlin trim() strips U+001C–U+001F). */
+export const trimWhiteSpace = (s) => s.replace(EDGE_WHITE_SPACE, '');
+
+/**
+ * Trim Unicode White_Space (the same set as bodies), strip the DLT operator prefix ("VM-") and the
+ * -S/-T/-P suffix, then upper-case. U+FEFF and U+001C–U+001F are not White_Space and are kept.
+ */
 export function normalizeSender(sender) {
-  return sender
-    .trim()
+  return trimWhiteSpace(sender)
     .replace(/^[A-Za-z]{2}-/, '')
     .replace(/-[STPstp]$/, '')
     .toUpperCase();
@@ -59,6 +63,7 @@ export function normalizeBody(body) {
 
 /** Deterministic id of an SMS-sourced transaction (ADR 0010). dateSentSeconds: integer. */
 export function smsId(sender, body, dateSentSeconds) {
+  if (!Number.isSafeInteger(dateSentSeconds)) throw new RangeError('dateSentSeconds must be a safe integer');
   const bodyHash = sha256(normalizeBody(body)).toString('hex');
   return uuidV8(`sms:v1|${normalizeSender(sender)}|${bodyHash}|${dateSentSeconds}`);
 }

@@ -9,8 +9,11 @@ import io.kotest.property.Arb
 import io.kotest.property.arbitrary.long
 import io.kotest.property.checkAll
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
@@ -42,6 +45,30 @@ class MoneyVectorsTest {
     @Test
     fun `MAX_MINOR matches the shared limit`() {
         assertEquals(money.long("max_minor"), Money.MAX_MINOR)
+    }
+
+    @Test
+    fun `currency table equals the shared table exactly`() {
+        val shared =
+            money
+                .getValue("currencies")
+                .obj()
+                .filterKeys { it != "description" }
+                .mapValues { (_, v) ->
+                    val c = v.obj()
+                    Triple(
+                        c.getValue("exponent").jsonPrimitive.int,
+                        c
+                            .getValue("symbol")
+                            .takeUnless { it is JsonNull }
+                            ?.jsonPrimitive
+                            ?.content,
+                        c.str("grouping").uppercase(),
+                    )
+                }
+        val mine = Currency.ALL.associate { it.code to Triple(it.exponent, it.symbol, it.grouping.name) }
+        assertEquals(shared, mine)
+        for (code in shared.keys) assertEquals(code, Currency.of(code)?.code)
     }
 
     @TestFactory

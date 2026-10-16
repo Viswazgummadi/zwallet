@@ -75,10 +75,21 @@ export function normalizeBody(body: string): string {
   return out;
 }
 
-/** Strips the DLT operator prefix ("VM-") and the -S/-T/-P suffix, then upper-cases. */
+/**
+ * Trims Unicode White_Space only. Not String.prototype.trim, which also strips U+FEFF (Kotlin's
+ * trim() strips U+001C–U+001F instead); both apps must agree for SMS ids to match.
+ */
+export function trimWhiteSpace(s: string): string {
+  let start = 0;
+  let end = s.length;
+  while (start < end && isWhiteSpace(s.charCodeAt(start))) start++;
+  while (end > start && isWhiteSpace(s.charCodeAt(end - 1))) end--;
+  return s.slice(start, end);
+}
+
+/** Trims White_Space, strips the DLT prefix ("VM-") and the -S/-T/-P suffix, then upper-cases. */
 export function normalizeSender(sender: string): string {
-  return sender
-    .trim()
+  return trimWhiteSpace(sender)
     .replace(/^[A-Za-z]{2}-/, '')
     .replace(/-[STPstp]$/, '')
     .toUpperCase();
@@ -90,6 +101,8 @@ export async function smsId(
   body: string,
   dateSentSeconds: number,
 ): Promise<string> {
+  if (!Number.isSafeInteger(dateSentSeconds))
+    throw new RangeError('dateSentSeconds must be a safe integer');
   const bodyHash = hex(await sha256(normalizeBody(body)));
   return uuidV8(`sms:v1|${normalizeSender(sender)}|${bodyHash}|${dateSentSeconds}`);
 }
