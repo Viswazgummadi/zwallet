@@ -118,7 +118,9 @@ export function mergeRow(spec, local, incoming, ctx = {}) {
     if (incomingWins) for (const c of cols) out[c] = incoming[c];
     const h = maxStr(lh, ih);
     if (h !== '') merged[group] = h;
-    if (cmp !== 0) {
+    // Both copies deleted the row: only the deletion time differs, nothing for the user to choose.
+    const bothDeleted = group === 'deleted' && local.deleted_at != null && incoming.deleted_at != null;
+    if (cmp !== 0 && !bothDeleted) {
       const [loser, loserH, winnerH, winnerFrontier] = incomingWins
         ? [local, lh, ih, incomingFrontier]
         : [incoming, ih, lh, localFrontier];

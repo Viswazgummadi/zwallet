@@ -28,6 +28,8 @@ cases floods the conflict log with false alarms. Logging neither breaks AC-11.3.
 - Equal-stamp ties pick the larger value. Values are ordered null < integer < string; strings
   compare by UTF-16 code unit. This keeps merges commutative even for cloned installs that share
   a node id.
+- **Exception (2026-10-16):** when both copies have the row deleted, a differing `deleted` group
+  (`deleted_at` times) is never a conflict: nothing is left for the user to choose.
 - The rule changes only **what is logged**, never the merged values. The reference
   implementation is `packages/contracts/lib/merge-reference.mjs`, and `fixtures/merge.json` is
   generated from it.

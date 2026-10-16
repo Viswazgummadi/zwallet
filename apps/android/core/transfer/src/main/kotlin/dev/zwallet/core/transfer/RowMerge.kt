@@ -120,7 +120,12 @@ object RowMerge {
             if (incomingWins) for (c in cols) out[c] = incoming.getValue(c)
             val h = maxOf(lh, ih)
             if (h.isNotEmpty()) merged[group] = h
-            if (cmp != 0) {
+            // Both copies deleted the row: only the deletion time differs, nothing for the user to choose.
+            val bothDeleted =
+                group == "deleted" &&
+                    local.getValue("deleted_at") != Value.Null &&
+                    incoming.getValue("deleted_at") != Value.Null
+            if (cmp != 0 && !bothDeleted) {
                 val loser = if (incomingWins) local else incoming
                 val loserH = if (incomingWins) lh else ih
                 val winnerH = if (incomingWins) ih else lh
