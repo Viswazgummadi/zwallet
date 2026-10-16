@@ -7,7 +7,9 @@
 // Hand-written vectors (fixtures/money.json, fixtures/hlc.json) are not touched.
 // Usage: node scripts/vectors.mjs [--check]
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { buildBackupVectors } from './backup-vectors.mjs';
+import { buildSearchVectors } from './search-vectors.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uuidV7, uuidV8, smsId, seedId, transactionTagId, insightDismissalId, normalizeSender, normalizeBody } from '../lib/ids.mjs';
@@ -167,9 +169,38 @@ function mergeVectors() {
   };
 }
 
-const outputs = { ...seeds(), ...uuidVectors(), ...mergeVectors() };
+const outputs = { ...seeds(), ...uuidVectors(), ...mergeVectors(), ...buildSearchVectors() };
 const check = process.argv.includes('--check');
 let stale = 0;
+
+// .zwallet vectors: files are verified by decoding against index.json (gzip bytes depend on zlib).
+{
+  const cases = read('fixtures/merge.cases.json');
+  const contracts = loadContracts();
+  const compaction = new Map(contracts.tables.map((t) => [t.name, t.compact]));
+  const { files, index } = await buildBackupVectors({ cases, spec, compaction });
+  const dir = p('fixtures/backup');
+  const indexText = json(index);
+  if (check) {
+    const cur = existsSync(`${dir}/index.json`) ? readFileSync(`${dir}/index.json`, 'utf8').replace(/\r\n/g, '\n') : null;
+    if (cur !== indexText) {
+      console.error('stale: fixtures/backup/index.json');
+      stale++;
+    } else console.log('up to date: fixtures/backup/index.json');
+    for (const e of index.entries) {
+      const f = `${dir}/${e.file}`;
+      if (!existsSync(f)) {
+        console.error(`missing: fixtures/backup/${e.file}`);
+        stale++;
+      }
+    }
+  } else {
+    mkdirSync(dir, { recursive: true });
+    for (const [name, text] of Object.entries(files)) writeFileSync(`${dir}/${name}`, text);
+    writeFileSync(`${dir}/index.json`, indexText);
+    console.log(`wrote fixtures/backup (${Object.keys(files).length} files + index.json)`);
+  }
+}
 for (const [rel, value] of Object.entries(outputs)) {
   const content = json(value);
   if (check) {
