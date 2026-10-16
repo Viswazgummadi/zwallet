@@ -57,12 +57,8 @@ Also decided:
 18. **detekt:** no stable detekt release supports Kotlin 2.4 yet (1.23.8 targets Kotlin 2.0), so
     M0 ships ktlint only. Add detekt (with the "no Double/Float in money packages" rule) once a
     compatible release is out, or treat money-guard + ktlint as enough?
-19. **Room vs canonical CHECKs (M1):** Room creates tables from entities, which can't declare the
-    CHECK constraints in `client-schema.sql`. Proposal: create tables from the canonical SQL in
-    Room's `onCreate` and let Room validate the columns. Confirm before M1 starts.
-20. **SQLite on Android (M1):** the framework SQLite on API 26 lacks FTS5. Proposal:
-    `androidx.sqlite:sqlite-bundled` (Apache-2.0, ~1–2 MB per ABI) — over 500 KB, so it needs
-    your OK and an ADR.
+19. ~~**Room vs canonical CHECKs**~~ → canonical SQL executed in onCreate (ADR 0022).
+20. ~~**SQLite on Android**~~ → sqlite-bundled approved; web uses sqlite-wasm + OPFS (ADR 0022).
 21. ~~**phone_hash_salt (M3)**~~ → per-person salt inside `people.phone_hash`;
     `profile.phone_hash_salt` removed (ADR 0021).
 22. **Pixel baselines:** web screenshots are compared only on your Windows machine; Roborazzi
