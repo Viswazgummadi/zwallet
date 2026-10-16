@@ -49,5 +49,5 @@ fun SkeletonBlock(
         } else {
             PULSE_MAX
         }
-    Box(modifier.alpha(alpha).background(Zw.colors.surfaceSunken, RoundedCornerShape(radius)))
+    Box(modifier.alpha(alpha).background(Zw.colors.skeleton, RoundedCornerShape(radius)))
 }

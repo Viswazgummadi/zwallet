@@ -19,6 +19,7 @@ dependencyResolutionManagement {
 rootProject.name = "zwallet"
 
 include(":app")
+include(":benchmark")
 include(":core:model")
 include(":core:transfer")
 include(":core:designsystem")

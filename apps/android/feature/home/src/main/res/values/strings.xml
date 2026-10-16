@@ -4,7 +4,8 @@
     <string name="home_greeting_morning">Good morning</string>
     <string name="home_greeting_afternoon">Good afternoon</string>
     <string name="home_greeting_evening">Good evening</string>
-    <string name="home_menu">Accounts, budgets and settings</string>
+    <string name="home_menu">Menu</string>
+    <string name="home_loading">Loading</string>
     <string name="home_first_run_title">Add your first expense</string>
     <string name="home_first_run_body">Everything stays on this phone. zwallet has no internet access.</string>
     <string name="home_add_expense">Add expense</string>

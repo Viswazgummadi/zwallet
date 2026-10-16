@@ -18,5 +18,8 @@ abstract class ZwScreenshotTest
 /** Robolectric qualifiers for a compact phone (DESIGN §3.1 compact). */
 const val PHONE = "w411dp-h914dp-normal-long-notround-any-420dpi-keyshidden-nonav"
 
+/** Robolectric qualifiers for a small phone (360dp wide, the narrowest common width). */
+const val PHONE_SMALL = "w360dp-h800dp-normal-long-notround-any-420dpi-keyshidden-nonav"
+
 /** Robolectric qualifiers for a medium window (foldable/tablet, navigation rail). */
 const val TABLET = "w840dp-h1280dp-xlarge-long-notround-any-320dpi-keyshidden-nonav"

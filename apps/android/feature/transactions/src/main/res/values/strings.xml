@@ -4,4 +4,5 @@
     <string name="transactions_title">Activity</string>
     <string name="transactions_empty_title">Nothing here yet</string>
     <string name="transactions_empty_body">Add an expense, or import from SMS.</string>
+    <string name="transactions_import_sms">Import from SMS</string>
 </resources>

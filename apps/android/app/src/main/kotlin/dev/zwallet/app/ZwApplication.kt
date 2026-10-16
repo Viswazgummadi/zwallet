@@ -10,25 +10,37 @@ import dagger.hilt.android.HiltAndroidApp
 class ZwApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.DEBUG) {
-            // Debug builds crash on main-thread disk/network access and leaked resources (DoD: StrictMode clean).
-            StrictMode.setThreadPolicy(
-                StrictMode.ThreadPolicy
-                    .Builder()
-                    .detectAll()
-                    .penaltyLog()
-                    .penaltyDeath()
-                    .build(),
-            )
-            StrictMode.setVmPolicy(
-                StrictMode.VmPolicy
-                    .Builder()
-                    .detectLeakedClosableObjects()
-                    .detectLeakedSqlLiteObjects()
-                    .detectActivityLeaks()
-                    .penaltyLog()
-                    .build(),
-            )
-        }
+        if (BuildConfig.DEBUG) installStrictMode()
     }
+}
+
+/**
+ * Debug builds crash on main-thread disk/network access (DoD: StrictMode clean). The detectors are
+ * listed explicitly: `detectAll()` on API 34+ also enables explicit-GC detection, and the platform
+ * itself calls `System.gc()` when an activity is relaunched (theme toggle, rotation), which would
+ * kill the process under `penaltyDeath()`.
+ */
+internal fun installStrictMode() {
+    StrictMode.setThreadPolicy(
+        StrictMode.ThreadPolicy
+            .Builder()
+            .detectDiskReads()
+            .detectDiskWrites()
+            .detectNetwork()
+            .detectCustomSlowCalls()
+            .detectResourceMismatches()
+            .detectUnbufferedIo()
+            .penaltyLog()
+            .penaltyDeath()
+            .build(),
+    )
+    StrictMode.setVmPolicy(
+        StrictMode.VmPolicy
+            .Builder()
+            .detectLeakedClosableObjects()
+            .detectLeakedSqlLiteObjects()
+            .detectActivityLeaks()
+            .penaltyLog()
+            .build(),
+    )
 }

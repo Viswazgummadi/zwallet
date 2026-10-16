@@ -59,6 +59,13 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                         isShrinkResources = true
                         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
                     }
+                    // Release-like, debug-signed, not debuggable: what :benchmark (Macrobenchmark) measures.
+                    create("benchmark") {
+                        initWith(getByName("release"))
+                        isDebuggable = false
+                        signingConfig = signingConfigs.getByName("debug")
+                        matchingFallbacks += "release"
+                    }
                 }
                 packaging {
                     resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/LICENSE*", "DebugProbesKt.bin")

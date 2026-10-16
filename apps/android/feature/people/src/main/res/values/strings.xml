@@ -4,4 +4,5 @@
     <string name="people_title">People</string>
     <string name="people_empty_title">No people yet</string>
     <string name="people_empty_body">Track money you lend and borrow, and split expenses with friends.</string>
+    <string name="people_add_person">Add person</string>
 </resources>
