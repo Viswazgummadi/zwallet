@@ -1,5 +1,5 @@
 {
-  "description": "Hand-written merge cases. scripts/vectors.mjs expands them into full rows and computes expected results with lib/merge-reference.mjs → merge.json (generated, never hand-edit). A side is `null` (row absent) or a patch on `base`: `set` columns, `stamp` groups with an HLC, `unstamp` groups (remove from field_hlc). Every group of `base` starts stamped with `base_hlc`. Frontiers default to the frontier of the side's own row (ADR 0017).",
+  "description": "Hand-written merge cases. scripts/vectors.mjs expands them into full rows and computes expected results with lib/merge-reference.mjs → merge.json (generated, never hand-edit). A side is `null` (row absent) or a patch on `base`: `set` columns, `stamp` groups with an HLC, `unstamp` groups (remove from field_hlc). Every group of `base` starts stamped with `base_hlc`. Frontiers default to the frontier of the side's own row (ADR 0017). More patch keys: `stamp_all` (stamp every group), `extra_stamp` (stamps for groups the spec does not know), `compacted` {hlc, deleted_at} (the tombstone compaction writes: contracts x-compact values, every group stamped with hlc), `raw` (override columns with invalid values), `omit` (drop columns). A case with `expect_error` must fail with that code.",
   "hlcs": {
     "H0": "1760000000000-0000-aaaaaaaa",
     "A1": "1760000100000-0000-aaaaaaaa",
@@ -23,9 +23,9 @@
         "original_currency": null,
         "occurred_at": 1759990000000,
         "occurred_tz": "Asia/Kolkata",
-        "account_id": "acct-sbi",
-        "category_id": "cat-food",
-        "merchant_id": "m-swiggy",
+        "account_id": "01920000-0000-7000-8000-0000000000a1",
+        "category_id": "01920000-0000-7000-8000-0000000000c1",
+        "merchant_id": "01920000-0000-7000-8000-0000000000d1",
         "counterparty_raw": "swiggy.stores@axl",
         "note": null,
         "payment_method": "upi",
@@ -47,7 +47,7 @@
         "created_at": 1760000000000,
         "updated_at": 1760000000000,
         "deleted_at": null,
-        "person_id": "p-rahul",
+        "person_id": "01920000-0000-7000-8000-0000000000e1",
         "kind": "lent",
         "amount_minor": 120000,
         "currency": "INR",
@@ -58,15 +58,16 @@
         "split_group_id": null
       }
     },
+    "tags": {"base_hlc":"H0","base":{"id":"01920000-0000-7000-8000-0000000000f1","created_at":1760000000000,"updated_at":1760000000000,"deleted_at":null,"name":"Reimbursable","color_token":null,"system_key":null}},
     "transaction_tags": {
       "base_hlc": "H0",
       "base": {
-        "id": "tt-1",
+        "id": "8d9aa962-cc87-8efb-b591-9bab3db3c4a9",
         "created_at": 1760000000000,
         "updated_at": 1760000000000,
         "deleted_at": null,
         "transaction_id": "01920000-0000-7000-8000-000000000001",
-        "tag_id": "tag-reimbursable"
+        "tag_id": "ab16cd15-412a-8857-9bde-6aac3913633c"
       }
     }
   },
@@ -80,7 +81,7 @@
     { "name": "local newer note kept against an old file → unchanged", "table": "transactions",
       "local": { "set": { "note": "Dinner", "updated_at": 1760000100000 }, "stamp": { "note": "A1" } }, "incoming": {} },
     { "name": "AC-11.2: different groups edited on each side both survive", "table": "transactions",
-      "local": { "set": { "category_id": "cat-groceries" }, "stamp": { "category": "A1" } },
+      "local": { "set": { "category_id": "01920000-0000-7000-8000-0000000000c2" }, "stamp": { "category": "A1" } },
       "incoming": { "set": { "note": "office lunch" }, "stamp": { "note": "B1" } } },
     { "name": "AC-11.3: same group edited on both sides, incoming later wins, local value logged", "table": "transactions",
       "local": { "set": { "note": "from phone" }, "stamp": { "note": "A1" } },
@@ -132,8 +133,8 @@
       "local": { "set": { "created_at": 1760000050000, "updated_at": 1760000300000, "note": "n" }, "stamp": { "note": "A2" } },
       "incoming": { "set": { "updated_at": 1760000200000 } } },
     { "name": "several groups at once: mixed winners", "table": "transactions",
-      "local": { "set": { "category_id": "cat-groceries", "note": "phone note", "review_state": "needs_review" }, "stamp": { "category": "A2", "note": "A1", "review": "A1" } },
-      "incoming": { "set": { "category_id": "cat-restaurants", "note": "laptop note", "payment_method": "card" }, "stamp": { "category": "B1", "note": "B2", "method": "B1" } } },
+      "local": { "set": { "category_id": "01920000-0000-7000-8000-0000000000c2", "note": "phone note", "review_state": "needs_review" }, "stamp": { "category": "A2", "note": "A1", "review": "A1" } },
+      "incoming": { "set": { "category_id": "01920000-0000-7000-8000-0000000000c3", "note": "laptop note", "payment_method": "card" }, "stamp": { "category": "B1", "note": "B2", "method": "B1" } } },
     { "name": "ledger entry: amount edit on one side, note on the other", "table": "ledger_entries",
       "local": { "set": { "amount_minor": 100000 }, "stamp": { "amount": "A1" } },
       "incoming": { "set": { "note": "Goa trip (fuel)" }, "stamp": { "note": "B1" } } },
@@ -142,6 +143,38 @@
       "incoming_frontier": { "aaaaaaaa": "H0", "bbbbbbbb": "B1" } },
     { "name": "transaction_tags: re-adding after removal on the other side (restore wins by HLC)", "table": "transaction_tags",
       "local": { "set": { "deleted_at": 1760000200000 }, "stamp": { "deleted": "B1" } },
-      "incoming": { "set": { "deleted_at": null }, "stamp": { "deleted": "A2" } } }
+      "incoming": { "set": { "deleted_at": null }, "stamp": { "deleted": "A2" } } },
+    {"name":"error: field_hlc with whitespace is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{\"note\": \"1760000200000-0000-bbbbbbbb\"}"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: field_hlc stamp with non-hex node is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{\"note\":\"1760000200000-0000-zzzzzzzz\"}"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: field_hlc stamp that is not an HLC (\"9\") is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{\"note\":\"9\"}"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: empty-string field_hlc is malformed (only {} is empty)","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":""}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: field_hlc that is not a string is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":5}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: field_hlc with a trailing newline is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{}\n"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: uppercase hex in a stamp is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{\"note\":\"1760000200000-0000-BBBBBBBB\"}"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: group name with capitals is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{\"Note\":\"1760000200000-0000-bbbbbbbb\"}"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: short wall clock in a stamp is malformed","table":"transactions","local":{},"incoming":{"raw":{"field_hlc":"{\"note\":\"760000200000-0000-bbbbbbbb\"}"}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: malformed local field_hlc is rejected too","table":"transactions","local":{"raw":{"field_hlc":"{\"note\":\"9\"}"}},"incoming":{},"expect_error":"malformed_field_hlc"},
+    {"name":"error: malformed incoming field_hlc is rejected even when the row is new","table":"transactions","local":null,"incoming":{"raw":{"field_hlc":""}},"expect_error":"malformed_field_hlc"},
+    {"name":"error: incoming row missing a column","table":"transactions","local":{},"incoming":{"omit":["note"]},"expect_error":"missing_column"},
+    {"name":"error: local row missing a column (field_hlc itself)","table":"transactions","local":{"omit":["field_hlc"]},"incoming":{},"expect_error":"missing_column"},
+    {"name":"error: new row missing a column","table":"transactions","local":null,"incoming":{"omit":["external_ref"]},"expect_error":"missing_column"},
+    {"name":"error: a missing column is reported before a malformed field_hlc","table":"transactions","local":{"raw":{"field_hlc":""}},"incoming":{"omit":["note"]},"expect_error":"missing_column"},
+    {"name":"valid: {} is an empty field_hlc; every group counts as \"\" so local wins","table":"transactions","local":{"set":{"note":"kept"},"stamp":{"note":"A1"}},"incoming":{"set":{"note":"other"},"raw":{"field_hlc":"{}"}}},
+    {"name":"unknown groups (incl. one named \"constructor\") keep the max stamp on both sides, values untouched","table":"transactions","local":{"extra_stamp":{"constructor":"A1","future_group":"B1"}},"incoming":{"extra_stamp":{"constructor":"B1","future_group":"A1"}}},
+    {"name":"unknown group \"constructor\" present only in the file is adopted","table":"transactions","local":{},"incoming":{"extra_stamp":{"constructor":"B1"}}},
+    {"name":"unknown group present only locally is kept; nothing to write","table":"transactions","local":{"extra_stamp":{"constructor":"B1","future_group":"A1"}},"incoming":{}},
+    {"name":"immutable columns that differ: the larger value wins (source manual vs sms → sms), no conflict","table":"transactions","local":{"set":{"source":"manual"}},"incoming":{}},
+    {"name":"immutable columns that differ: same result in the other direction","table":"transactions","local":{},"incoming":{"set":{"source":"manual"}}},
+    {"name":"immutable on a system row: null loses to a value (tags.system_key)","table":"tags","local":{},"incoming":{"set":{"system_key":"reimbursable"}}},
+    {"name":"external_ref is LWW: a re-parse with a newer stamp corrects it","table":"transactions","local":{"set":{"external_ref":"512345678900"}},"incoming":{"set":{"external_ref":"512345678901"},"stamp":{"ref":"B1"}}},
+    {"name":"external_ref edited on both sides: later stamp wins, losing ref logged","table":"transactions","local":{"set":{"external_ref":"LOCAL-REF"},"stamp":{"ref":"A1"}},"incoming":{"set":{"external_ref":"FILE-REF"},"stamp":{"ref":"B1"}}},
+    {"name":"seed-like: equal values, newer stamps and earlier created_at → unchanged but write","table":"transactions","local":{},"incoming":{"stamp_all":"B1","set":{"created_at":1759999999999}}},
+    {"name":"tombstone for a row we never had → inserted_deleted","table":"transactions","local":null,"incoming":{"set":{"deleted_at":1760000200000},"stamp":{"deleted":"B1"}}},
+    {"name":"both sides deleted with different deleted_at → unchanged value-wise, but write","table":"transactions","local":{"set":{"deleted_at":1760000100000},"stamp":{"deleted":"A1"}},"incoming":{"set":{"deleted_at":1760000200000},"stamp":{"deleted":"B1"}}},
+    {"name":"only stamps differ (no value change): unchanged, write","table":"transactions","local":{"set":{"note":"same"},"stamp":{"note":"A1"}},"incoming":{"set":{"note":"same"},"stamp":{"note":"B1","category":"B1"}}},
+    {"name":"compacted tombstone beats an older full row and never resurrects (file side)","table":"transactions","local":{},"incoming":{"compacted":{"hlc":"B2","deleted_at":1760000400000},"set":{"updated_at":1760000400000}},"incoming_frontier":{"aaaaaaaa":"H0","bbbbbbbb":"B2"}},
+    {"name":"compacted tombstone beats an older full row and never resurrects (local side)","table":"transactions","local":{"compacted":{"hlc":"B2","deleted_at":1760000400000},"set":{"updated_at":1760000400000}},"incoming":{"stamp_all":"A2","set":{"note":"late edit","deleted_at":null}},"local_frontier":{"aaaaaaaa":"A2","bbbbbbbb":"B2"}},
+    {"name":"compacted tombstone whose older rival edit was unseen: the lost edit is logged","table":"transactions","local":{"compacted":{"hlc":"B2","deleted_at":1760000400000},"set":{"updated_at":1760000400000}},"incoming":{"stamp_all":"A2","set":{"note":"late edit"}}},
+    {"name":"compaction keeps NOT NULL foreign keys (ledger_entries.person_id)","table":"ledger_entries","local":{},"incoming":{"compacted":{"hlc":"B2","deleted_at":1760000400000},"set":{"updated_at":1760000400000}},"incoming_frontier":{"aaaaaaaa":"H0","bbbbbbbb":"B2"}}
   ]
 }

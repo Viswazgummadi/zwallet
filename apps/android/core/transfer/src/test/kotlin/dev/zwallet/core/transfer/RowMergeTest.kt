@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
+import org.junit.jupiter.api.assertThrows
 import java.io.File
 import kotlin.random.Random
 
@@ -50,7 +52,8 @@ class RowMergeTest {
         vectors.getValue("cases").jsonArray.map { it.jsonObject }.map { c ->
             DynamicTest.dynamicTest(c.getValue("name").jsonPrimitive.content) {
                 val spec = Contracts.table(c.getValue("table").jsonPrimitive.content)
-                val result =
+                val expected = c.getValue("expected").jsonObject
+                val merge = {
                     RowMerge.merge(
                         spec,
                         row(c.getValue("local")),
@@ -58,8 +61,15 @@ class RowMergeTest {
                         frontier(c["local_frontier"]),
                         frontier(c["incoming_frontier"]),
                     )
-                val expected = c.getValue("expected").jsonObject
+                }
+                if ("error" in expected) {
+                    val e = assertThrows<MergeException> { merge() }
+                    assertEquals(expected.getValue("error").jsonPrimitive.content, e.errorCode.code, "error code")
+                    return@dynamicTest
+                }
+                val result = merge()
                 assertEquals(row(expected.getValue("row")), result.row, "row")
+                assertEquals(expected.getValue("write").jsonPrimitive.boolean, result.write, "write")
                 assertEquals(
                     expected.getValue("outcome").jsonPrimitive.content,
                     result.outcome.name.lowercase(),
@@ -87,6 +97,28 @@ class RowMergeTest {
                 assertEquals(conflicts, result.conflicts, "conflicts")
             }
         }
+
+    @Test
+    fun `generated compaction constants equal the vector file (x-compact)`() {
+        val expected = vectors.getValue("compaction").jsonObject
+        for (spec in Contracts.tables) {
+            val e = expected.getValue(spec.name).jsonObject
+            val compact =
+                e.getValue("compact").jsonObject.mapValues { (_, v) ->
+                    when {
+                        v is JsonNull -> null
+                        v is JsonPrimitive && v.isString -> v.content
+                        else -> v.jsonPrimitive.long
+                    }
+                }
+            assertEquals(compact, spec.compact, "${spec.name}.compact")
+            assertEquals(
+                e.getValue("compact_keep").jsonArray.map { it.jsonPrimitive.content },
+                spec.compactKeep,
+                spec.name,
+            )
+        }
+    }
 
     // ── properties (mirrors packages/contracts/test/vectors.test.mjs) ──────────────────────────
     private val spec = Contracts.transactions
@@ -175,7 +207,9 @@ class RowMergeTest {
                 }
                 repeat(2) { for (a in devices) for (b in devices) if (a !== b) a.receive(b.row) }
                 devices.drop(1).forEach { assertEquals(devices[0].row, it.row, "seed $seed diverged") }
-                assertEquals(Outcome.UNCHANGED, RowMerge.merge(spec, devices[0].row, devices[1].row).outcome)
+                val again = RowMerge.merge(spec, devices[0].row, devices[1].row)
+                assertEquals(Outcome.UNCHANGED, again.outcome)
+                assertEquals(false, again.write)
             }
         }
 
@@ -217,5 +251,47 @@ class RowMergeTest {
             FieldHlc.parse("""{"note":"0000000000001-0000-00000000"}"""),
         )
         assertEquals(emptyMap<String, String>(), FieldHlc.parse("{}"))
+    }
+
+    @Test
+    fun `field_hlc is parsed strictly`() {
+        val h = "1760000000000-0000-aaaaaaaa"
+        val bad =
+            listOf("", "{\"a\": \"$h\"}", "{\"note\":\"9\"}", "{\"note\":\"$h\"}\n", "{\"note\":\"${h.uppercase()}\"}")
+        for (text in bad) {
+            val e = assertThrows<MergeException>(text) { FieldHlc.parse(text) }
+            assertEquals(MergeErrorCode.MALFORMED_FIELD_HLC, e.errorCode)
+        }
+        assertThrows<MergeException> { FieldHlc.parse(Value.Int(5)) }
+        assertThrows<MergeException> { FieldHlc.parse(Value.Null) }
+    }
+
+    @Test
+    fun `a stamp for a group named constructor is kept and never touches values`() {
+        val h = "1760000000000-0000-aaaaaaaa"
+        val base = baseRow()
+        val stamps = FieldHlc.parse(base.getValue("field_hlc")).toMutableMap()
+        stamps["constructor"] = h
+        val other = base + ("field_hlc" to Value.Text(FieldHlc.stringify(stamps)))
+        val r = RowMerge.merge(spec, base, other)
+        assertEquals(h, FieldHlc.parse(r.row.getValue("field_hlc"))["constructor"])
+        assertEquals(Outcome.UNCHANGED, r.outcome)
+        assertEquals(true, r.write)
+    }
+
+    @Test
+    fun `immutable columns converge to the larger value in either direction`() {
+        val sources = listOf("manual", "sms", "paste", "csv_import", "recurring_auto")
+        for (x in sources) {
+            for (y in sources) {
+                val a = baseRow() + ("source" to Value.Text(x))
+                val b = baseRow() + ("source" to Value.Text(y))
+                val ab = RowMerge.merge(spec, a, b)
+                assertEquals(ab.row, RowMerge.merge(spec, b, a).row, "$x/$y")
+                assertEquals(Value.Text(maxOf(x, y)), ab.row.getValue("source"))
+                assertEquals(emptyList<Conflict>(), ab.conflicts)
+                assertEquals(if (x < y) Outcome.UPDATED else Outcome.UNCHANGED, ab.outcome, "$x/$y")
+            }
+        }
     }
 }

@@ -11,7 +11,8 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uuidV7, uuidV8, smsId, seedId, transactionTagId, insightDismissalId, normalizeSender, normalizeBody } from '../lib/ids.mjs';
-import { mergeRow, stringifyFieldHlc } from '../lib/merge-reference.mjs';
+import { mergeRow, stringifyFieldHlc, MergeError } from '../lib/merge-reference.mjs';
+import { loadContracts } from '../lib/contracts.mjs';
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const p = (rel) => path.join(PKG, rel);
@@ -92,21 +93,32 @@ function uuidVectors() {
 function mergeVectors() {
   const src = read('fixtures/merge.cases.json');
   const H = (k) => src.hlcs[k] ?? k;
+  const contracts = loadContracts();
+  const compaction = new Map(contracts.tables.map((t) => [t.name, t.compact]));
   const build = (table, patch) => {
     if (patch === null) return null;
     const t = src.tables[table];
     const s = spec(table);
     const stamps = Object.fromEntries(Object.keys(s.groups).map((g) => [g, H(t.base_hlc)]));
+    if (patch.stamp_all) for (const g of Object.keys(s.groups)) stamps[g] = H(patch.stamp_all);
+    if (patch.compacted) for (const g of Object.keys(s.groups)) stamps[g] = H(patch.compacted.hlc);
     for (const [g, h] of Object.entries(patch.stamp ?? {})) {
-      if (!(g in s.groups)) throw new Error(`unknown group ${table}.${g}`);
+      if (!Object.hasOwn(s.groups, g)) throw new Error(`unknown group ${table}.${g}`);
       stamps[g] = H(h);
     }
     for (const g of patch.unstamp ?? []) delete stamps[g];
-    const row = { ...t.base, ...(patch.set ?? {}) };
+    // compacted: the tombstone a compaction writes (contracts x-compact, ARCH §5.5).
+    const compact = patch.compacted ? { ...compaction.get(table), deleted_at: patch.compacted.deleted_at } : {};
+    // extra_stamp: stamps for groups the spec doesn't know (forward compatibility, S2).
+    for (const [g, h] of Object.entries(patch.extra_stamp ?? {})) stamps[g] = H(h);
+    const row = { ...t.base, ...compact, ...(patch.set ?? {}) };
     for (const c of Object.keys(patch.set ?? {})) if (!s.columns.includes(c)) throw new Error(`unknown column ${table}.${c}`);
     row.field_hlc = stringifyFieldHlc(stamps);
     row.hlc = Object.values(stamps).reduce((a, b) => (a > b ? a : b), '');
-    return Object.fromEntries(s.columns.map((c) => [c, row[c]]));
+    const built = Object.fromEntries(s.columns.map((c) => [c, row[c]]));
+    Object.assign(built, patch.raw ?? {}); // raw: invalid values on purpose (error vectors)
+    for (const c of patch.omit ?? []) delete built[c];
+    return built;
   };
   const cases = src.cases.map((c) => {
     const local = build(c.table, c.local);
@@ -115,10 +127,30 @@ function mergeVectors() {
     const front = (f) => Object.fromEntries(Object.entries(f).map(([n, h]) => [n, H(h)]));
     if (c.local_frontier) ctx.localFrontier = front(c.local_frontier);
     if (c.incoming_frontier) ctx.incomingFrontier = front(c.incoming_frontier);
-    const result = mergeRow(spec(c.table), local, incoming, ctx);
-    // Re-importing the same row must change nothing (AC-11.5).
-    const again = mergeRow(spec(c.table), result.row, incoming, ctx);
-    if (again.outcome !== 'unchanged') throw new Error(`not idempotent: ${c.name}`);
+    let result;
+    try {
+      result = mergeRow(spec(c.table), local, incoming, ctx);
+    } catch (e) {
+      if (!(e instanceof MergeError)) throw e;
+      result = { error: e.code };
+    }
+    if (c.expect_error ? result.error !== c.expect_error : result.error) {
+      throw new Error(`unexpected result for "${c.name}": ${JSON.stringify(result)}`);
+    }
+    if (!result.error) {
+      // Re-importing the same row must change nothing, and write nothing (AC-11.5).
+      const again = mergeRow(spec(c.table), result.row, incoming, ctx);
+      if (again.outcome !== 'unchanged' || again.write) throw new Error(`not idempotent: ${c.name}`);
+      // Commutative on values: merging the other way round yields the identical row.
+      if (local) {
+        const swapped = {};
+        if (ctx.incomingFrontier) swapped.localFrontier = ctx.incomingFrontier;
+        if (ctx.localFrontier) swapped.incomingFrontier = ctx.localFrontier;
+        const rev = mergeRow(spec(c.table), incoming, local, swapped);
+        const norm = (r) => JSON.stringify(Object.fromEntries(Object.keys(r).sort().map((k) => [k, r[k]])));
+        if (norm(rev.row) !== norm(result.row)) throw new Error(`not commutative: ${c.name}`);
+      }
+    }
     const frontiers = {
       ...(ctx.localFrontier && { local_frontier: ctx.localFrontier }),
       ...(ctx.incomingFrontier && { incoming_frontier: ctx.incomingFrontier }),
@@ -128,7 +160,8 @@ function mergeVectors() {
   return {
     'fixtures/merge.json': {
       description:
-        'Generated from merge.cases.json by scripts/vectors.mjs using lib/merge-reference.mjs. Never hand-edit. Each case: merge(local, incoming) → expected {row, conflicts, outcome}. Frontiers (node → max HLC seen) default to the frontier of each side\'s own row (ADR 0017).',
+        'Generated from merge.cases.json by scripts/vectors.mjs using lib/merge-reference.mjs. Never hand-edit. Each case: merge(local, incoming) → expected {row, conflicts, outcome, write}, or expected {error} when the input is invalid (malformed_field_hlc | missing_column; every implementation must fail with the same code). Outcomes: inserted, inserted_deleted, updated, deleted, restored, unchanged. write = the merged row differs from local in any column. Frontiers (node → max HLC seen) default to the frontier of each side\'s own row (ADR 0017). "compaction" pins the generated x-compact placeholders.',
+      compaction: Object.fromEntries(contracts.tables.map((t) => [t.name, { compact: t.compact, compact_keep: t.compactKeep }])),
       cases,
     },
   };

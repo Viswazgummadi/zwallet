@@ -82,8 +82,11 @@ test('CHECK constraints reject invalid rows', () => {
     ['transactions', txn({ review_state: 'maybe' })],
     ['transactions', txn({ source: 'email' })],
     ['transactions', txn({ currency: 'RUPEE' })],
-    ['profile', { id: 'you', phone_hash_salt: 's' }],
-    ['profile', { id: 'me', phone_hash_salt: 's', month_start_day: 29 }],
+    ['transactions', txn({ currency: 'inr' })],
+    ['transactions', txn({ original_amount_minor: 5, original_currency: 'US' })],
+    ['profile', { id: 'you' }],
+    ['profile', { id: 'me', month_start_day: 29 }],
+    ['upcoming_items', { id: 'u', kind: 'other', title: 't', due_on: '15-10-2026' }],
     ['accounts', { id: 'a', name: 'A', kind: 'piggy' }],
     ['categories', { id: 'c', name: 'C', icon: 'i', color_token: 'x', counts_as: 'maybe' }],
     ['ledger_entries', { id: 'l', person_id: 'p', kind: 'gifted', amount_minor: 1, occurred_at: 1 }],
@@ -99,16 +102,13 @@ test('CHECK constraints reject invalid rows', () => {
   }
 });
 
-test('valid rows insert with documented defaults; external_ref unique per account among live rows', () => {
+test('valid rows insert with documented defaults; external_ref is indexed but never unique', () => {
   const db = openDb({ local: false });
-  insert(db, 'profile', { id: 'me', phone_hash_salt: 'salt' });
+  insert(db, 'profile', { id: 'me' });
   insert(db, 'accounts', { id: 'a', name: 'SBI ••1234', kind: 'bank', last4: '1234' });
   insert(db, 'transactions', txn({ account_id: 'a', external_ref: 'R1' }));
-  assert.throws(
-    () => insert(db, 'transactions', txn({ id: 't2', account_id: 'a', external_ref: 'R1' })),
-    /UNIQUE/,
-  );
-  db.prepare('UPDATE transactions SET deleted_at = 5 WHERE id = ?').run('t1');
+  // Two live rows may share a ref (e.g. merged from two copies): dedup is an app-level review
+  // concern, never a constraint that could make an import fail (S4).
   insert(db, 'transactions', txn({ id: 't2', account_id: 'a', external_ref: 'R1' }));
   const row = db
     .prepare('SELECT currency, occurred_tz, field_hlc, review_state, source, payment_method FROM transactions WHERE id = ?')

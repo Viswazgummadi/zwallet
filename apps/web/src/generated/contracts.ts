@@ -10,10 +10,17 @@ export interface TableSpec {
   readonly name: string;
   /** Every column, in schema order. */
   readonly columns: readonly string[];
-  /** Set once at creation and never merged: equal on every copy by construction. */
+  /** Not in any merge group. Set at creation; if two copies disagree, merge keeps the larger value. */
   readonly immutable: readonly string[];
   /** Merge group name → its columns. */
   readonly groups: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Tombstone compaction (ARCH §5.5): column → value for every column of every group except
+   * `deleted`, except `compactKeep`. Compaction re-stamps every group.
+   */
+  readonly compact: Readonly<Record<string, string | number | null>>;
+  /** NOT NULL foreign keys that compaction leaves as they are (no placeholder can satisfy them). */
+  readonly compactKeep: readonly string[];
 }
 
 /** Bookkeeping columns every table has; merged by rule, not by group. */
@@ -22,17 +29,24 @@ export const META_COLUMNS = ['id', 'hlc', 'field_hlc', 'created_at', 'updated_at
 export const TABLES = {
   profile: {
     name: "profile",
-    columns: ["id", "hlc", "field_hlc", "created_at", "updated_at", "deleted_at", "display_name", "default_currency", "month_start_day", "my_vpa", "phone_hash_salt", "prefs"],
+    columns: ["id", "hlc", "field_hlc", "created_at", "updated_at", "deleted_at", "display_name", "default_currency", "month_start_day", "my_vpa", "prefs"],
     immutable: [],
     groups: {
       name: ["display_name"],
       currency: ["default_currency"],
       month_start: ["month_start_day"],
       vpa: ["my_vpa"],
-      salt: ["phone_hash_salt"],
       prefs: ["prefs"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      display_name: null,
+      default_currency: "INR",
+      month_start_day: 1,
+      my_vpa: null,
+      prefs: "{}",
+    },
+    compactKeep: [],
   },
   accounts: {
     name: "accounts",
@@ -49,6 +63,22 @@ export const TABLES = {
       archived: ["archived"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      name: "",
+      kind: "other",
+      institution: null,
+      last4: null,
+      color_token: null,
+      opening_balance_minor: 0,
+      currency: "INR",
+      card_cycle_day: null,
+      card_due_day: null,
+      credit_limit_minor: null,
+      balance_snapshot_minor: null,
+      balance_snapshot_at: null,
+      archived: 0,
+    },
+    compactKeep: [],
   },
   categories: {
     name: "categories",
@@ -63,6 +93,16 @@ export const TABLES = {
       archived: ["archived"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      parent_id: null,
+      name: "",
+      icon: "",
+      color_token: "",
+      counts_as: "excluded",
+      sort_order: 0,
+      archived: 0,
+    },
+    compactKeep: [],
   },
   merchants: {
     name: "merchants",
@@ -76,6 +116,14 @@ export const TABLES = {
       vpa_patterns: ["vpa_patterns"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      name: "",
+      logo_key: null,
+      default_category_id: null,
+      aliases: "[]",
+      vpa_patterns: "[]",
+    },
+    compactKeep: [],
   },
   tags: {
     name: "tags",
@@ -86,6 +134,11 @@ export const TABLES = {
       color: ["color_token"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      name: "",
+      color_token: null,
+    },
+    compactKeep: [],
   },
   people: {
     name: "people",
@@ -99,6 +152,14 @@ export const TABLES = {
       avatar: ["avatar_color_token"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      display_name: "",
+      phone_hash: null,
+      vpa: null,
+      contact_lookup_key: null,
+      avatar_color_token: null,
+    },
+    compactKeep: [],
   },
   rules: {
     name: "rules",
@@ -112,6 +173,14 @@ export const TABLES = {
       actions: ["actions"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      name: null,
+      priority: 0,
+      enabled: 1,
+      match: "{}",
+      actions: "[]",
+    },
+    compactKeep: [],
   },
   budgets: {
     name: "budgets",
@@ -124,6 +193,16 @@ export const TABLES = {
       rollover: ["rollover"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      scope: "overall",
+      category_id: null,
+      amount_minor: 1,
+      currency: "INR",
+      period: "month",
+      starts_on: null,
+      rollover: 0,
+    },
+    compactKeep: [],
   },
   recurring_series: {
     name: "recurring_series",
@@ -141,11 +220,25 @@ export const TABLES = {
       reminder: ["remind_days_before"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      name: "",
+      merchant_id: null,
+      category_id: null,
+      account_id: null,
+      cadence: "custom",
+      interval_days: null,
+      expected_amount_minor: null,
+      currency: "INR",
+      next_due_on: null,
+      status: "detected",
+      remind_days_before: null,
+    },
+    compactKeep: [],
   },
   transactions: {
     name: "transactions",
     columns: ["id", "hlc", "field_hlc", "created_at", "updated_at", "deleted_at", "type", "amount_minor", "currency", "original_amount_minor", "original_currency", "occurred_at", "occurred_tz", "account_id", "category_id", "merchant_id", "counterparty_raw", "note", "payment_method", "source", "review_state", "external_ref", "refund_of_id", "transfer_peer_id", "split_group_id", "my_share_minor", "recurring_series_id", "location"],
-    immutable: ["source", "external_ref"],
+    immutable: ["source"],
     groups: {
       amount: ["amount_minor", "currency", "original_amount_minor", "original_currency"],
       type: ["type"],
@@ -159,8 +252,33 @@ export const TABLES = {
       links: ["refund_of_id", "transfer_peer_id", "split_group_id", "my_share_minor"],
       recurring: ["recurring_series_id"],
       location: ["location"],
+      ref: ["external_ref"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      amount_minor: 1,
+      currency: "INR",
+      original_amount_minor: null,
+      original_currency: null,
+      type: "expense",
+      occurred_at: 0,
+      occurred_tz: "Asia/Kolkata",
+      account_id: null,
+      category_id: null,
+      merchant_id: null,
+      counterparty_raw: null,
+      note: null,
+      payment_method: "other",
+      review_state: "confirmed",
+      refund_of_id: null,
+      transfer_peer_id: null,
+      split_group_id: null,
+      my_share_minor: null,
+      recurring_series_id: null,
+      location: null,
+      external_ref: null,
+    },
+    compactKeep: [],
   },
   transaction_tags: {
     name: "transaction_tags",
@@ -169,6 +287,8 @@ export const TABLES = {
     groups: {
       deleted: ["deleted_at"],
     },
+    compact: {},
+    compactKeep: [],
   },
   ledger_entries: {
     name: "ledger_entries",
@@ -184,6 +304,17 @@ export const TABLES = {
       links: ["transaction_id", "split_group_id"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      kind: "lent",
+      amount_minor: 1,
+      currency: "INR",
+      occurred_at: 0,
+      due_on: null,
+      note: null,
+      transaction_id: null,
+      split_group_id: null,
+    },
+    compactKeep: ["person_id"],
   },
   upcoming_items: {
     name: "upcoming_items",
@@ -198,6 +329,19 @@ export const TABLES = {
       status: ["status", "transaction_id"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      kind: "other",
+      title: "",
+      amount_minor: null,
+      currency: "INR",
+      due_on: "1970-01-01",
+      account_id: null,
+      recurring_series_id: null,
+      ledger_entry_id: null,
+      status: "upcoming",
+      transaction_id: null,
+    },
+    compactKeep: [],
   },
   saved_filters: {
     name: "saved_filters",
@@ -210,6 +354,13 @@ export const TABLES = {
       order: ["sort_order"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      name: "",
+      query: "",
+      pinned: 0,
+      sort_order: 0,
+    },
+    compactKeep: [],
   },
   insight_dismissals: {
     name: "insight_dismissals",
@@ -219,6 +370,10 @@ export const TABLES = {
       until: ["dismissed_until"],
       deleted: ["deleted_at"],
     },
+    compact: {
+      dismissed_until: null,
+    },
+    compactKeep: [],
   },
   attachments: {
     name: "attachments",
@@ -227,6 +382,8 @@ export const TABLES = {
     groups: {
       deleted: ["deleted_at"],
     },
+    compact: {},
+    compactKeep: [],
   },
 } as const satisfies Record<string, TableSpec>;
 
@@ -247,7 +404,6 @@ export interface ProfileRow {
   default_currency: string;
   month_start_day: number;
   my_vpa: string | null;
-  phone_hash_salt: string;
   prefs: string;
 }
 

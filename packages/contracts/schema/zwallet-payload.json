@@ -19,7 +19,9 @@
     },
     "exported_at": {
       "type": "integer",
-      "description": "Epoch ms."
+      "description": "Epoch ms.",
+      "minimum": 0,
+      "maximum": 9007199254740991
     },
     "source_node": {
       "type": "string",
@@ -28,7 +30,8 @@
     },
     "max_hlc": {
       "type": "string",
-      "description": "Max HLC over every row in the file; the importer advances its clock past it."
+      "description": "Max HLC over every row in the file; the importer advances its clock past it.",
+      "pattern": "^\\d{13}-[0-9a-f]{4}-[0-9a-f]{8}$"
     },
     "tables": {
       "type": "object",
