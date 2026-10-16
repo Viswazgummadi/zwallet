@@ -27,6 +27,10 @@ gradlePlugin {
             id = "zw.android.application"
             implementationClass = "AndroidApplicationConventionPlugin"
         }
+        register("androidBenchmark") {
+            id = "zw.android.benchmark"
+            implementationClass = "AndroidBenchmarkConventionPlugin"
+        }
         register("androidLibrary") {
             id = "zw.android.library"
             implementationClass = "AndroidLibraryConventionPlugin"
