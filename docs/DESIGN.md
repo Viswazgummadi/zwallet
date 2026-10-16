@@ -31,8 +31,10 @@ month" not "Total expenditure: INR 18240.00". Errors say what happened and what 
 - **Brand seed** Teal `#0B6E69` → Material 3 tonal palette (TonalSpot). Used for primary actions,
   selection, focus, the FAB. Dynamic color is an opt-in setting (off by default).
 - **Neutrals** (warm grays) carry 90% of the UI: `page`, `surface`, `surfaceRaised`,
-  `surfaceSunken`, `inkPrimary/Secondary/Muted`, `hairline`. Dark mode is designed, not inverted
-  (dark surface `#121417`, raised `#1A1D21`); optional AMOLED black.
+  `surfaceSunken`, `skeleton`, `inkPrimary/Secondary/Muted`, `hairline`. Dark mode is designed, not
+  inverted (dark surface `#121417`, raised `#1A1D21`); optional AMOLED black.
+- **Boundaries:** interactive boundaries (outlined buttons, fields, drop zones, chips) use M3
+  `outline` (≥ 3:1, WCAG 1.4.11). `hairline` is only for dividers and decorative rules.
 - **Money semantics:** income amounts in `amountIncome` with a leading `+`; expenses in ink with
   `−`; transfers in secondary ink with `⇄`. Lending: "owes you" uses `amountIncome`, "you owe" uses
   ink + label — never red.
@@ -81,17 +83,24 @@ glyph on identity container); fallback = 1–2 letter monogram.
 
 ### 3.1 Android (window size classes)
 - **Compact (phones):** bottom navigation with 4 destinations — **Home**, **Activity**,
-  **Insights**, **People** — plus a FAB (Quick add) above the nav on Home and Activity.
-  Accounts, Budgets, Recurring, Settings are reached from Home sections and the avatar menu
-  (top-right).
+  **Insights**, **People** — plus a FAB above the nav on Home and Activity (Quick add) and on
+  People (Add person, §5.9). Accounts, Budgets, Recurring, Settings are reached from Home
+  sections and the avatar menu (top-right, labelled "Menu"). Nav labels stay on one line and
+  shrink rather than clip at font scale 2.0 on 360dp phones. Medium+ uses the 24dp
+  `gutterMedium`; EmptyState is width-capped.
 - **Medium/Expanded (foldables/tablets):** navigation rail; Activity becomes list-detail
   (two panes); Insights becomes a two-column card grid.
 - Edge-to-edge, predictive back, top app bar collapses on scroll (large title → small).
 
 ### 3.2 Web
-- **≥ 1200 px:** left sidebar (Home, Transactions, Insights, People, Accounts, Budgets,
-  Recurring, Review, Settings) + content (max width 1440) + optional right detail panel.
-- **840–1199:** collapsible icon sidebar. **< 840:** bottom nav like Android (PWA on phones).
+- **≥ 1200 px:** left sidebar (Home, Activity, Insights, People, Accounts, Budgets,
+  Recurring, Review, Settings; scrolls when it doesn't fit) + content (max width 1440) + optional
+  right detail panel. The tab is called **Activity** on both platforms.
+- **840–1199:** collapsible icon sidebar. **< 840:** bottom nav like Android (PWA on phones) plus
+  a top-bar menu button with Accounts, Budgets, Recurring, Review, Settings (and Export when
+  narrow), so every destination is reachable on a phone.
+- At 200% text nothing scrolls sideways: nav labels wrap or shrink, the data chip collapses to
+  its icon (keeping its accessible name), and Export moves into the menu.
 - Global top bar: search (opens command palette), period switcher (on Insights), **data chip**
   ("From phone · 15 Oct, 9:40 pm" — when the last file was imported; tap → Import / Export),
   "New" button (`N`), **Export** button (`⌘E` / `Ctrl+E`) that shows a dot when there are edits
@@ -120,7 +129,7 @@ glyph on identity container); fallback = 1–2 letter monogram.
 | **PasswordField** | Show/hide toggle, strength hint (weak/okay/strong with label + icon, never color-only), caps-lock warning; confirm field on export |
 | **ImportPreview** | Counts as rows with icons: new · updated · deleted · conflicts (expandable list) · unchanged; source line ("Exported from zwallet web · 15 Oct, 9:40 pm"); primary "Import", secondary "Cancel" |
 | **EmptyState** | Illustration (simple line art, brand teal), one sentence, primary CTA |
-| **Skeleton** | Shimmer-free pulsing blocks (respects reduced motion), shapes match final layout |
+| **Skeleton** | Shimmer-free pulsing blocks in the `skeleton` color (≥ 1.25:1 on page/surface in every mode); respects reduced motion live; the group announces "Loading" (indeterminate progress) to screen readers; shapes match final layout |
 | **Snackbar** | Message + Undo; 5 s; stacks replace |
 | **ConfirmDialog** | Title states the outcome ("Delete 3 transactions?"), body states consequences, destructive button in `critical` text |
 
@@ -400,6 +409,9 @@ Android, arrow keys on web with live region), table view, forced-colors/print te
 | About credit | "zwallet — created by Viswaz Gummadi. Free software under the GNU GPL v3." [Source code] |
 | Reminder share | "Hi Rahul, just a reminder about the ₹1,200 for the Goa trip. You can pay here: <UPI link>. Thanks!" |
 | Budget 80% | "You've used 80% of your Food budget with 9 days left." |
+| Not built yet (pre-release stubs) | "Search arrives in the next update." — Snackbar on Android, polite status line on web; the control stays enabled |
+| Clock ahead (import) | "This file was made on a device whose clock is ahead. Fix the date and time on that device and export again." |
+| Shared web address | "This copy runs on a shared web address. Other sites on <host> could read data you save here. Use zwallet from its own address." |
 
 Numbers: always include the currency symbol; relative dates for < 7 days ("Yesterday, 9:40 pm"),
 absolute otherwise ("Mon, 13 Oct").

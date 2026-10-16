@@ -38,7 +38,11 @@ Also decided:
 
 ## Open
 
-13. **Custom domain** for the web app (optional; GitHub Pages URL works without one).
+13. **Dedicated web origin — needed before real data goes into the web app (ADR 0020).** Browser
+    storage is per origin, and every Pages site of one account shares `<user>.github.io`. Pick
+    one: a custom domain (CNAME on Pages), or a GitHub organisation used only for zwallet whose
+    root site serves the app (`https://<org>.github.io/`, `ZW_BASE=/`). Until then the current
+    deployment shows a shared-origin warning.
 14. **EMI interest:** EMIs are wholly `excluded` today. Should the interest part later count as
     spend (needs principal/interest split per EMI)?
 15. **Paytm sender headers:** confirm exact DLT headers for Paytm wallet / UPI Lite messages from
@@ -59,9 +63,8 @@ Also decided:
 20. **SQLite on Android (M1):** the framework SQLite on API 26 lacks FTS5. Proposal:
     `androidx.sqlite:sqlite-bundled` (Apache-2.0, ~1–2 MB per ABI) — over 500 KB, so it needs
     your OK and an ADR.
-21. **phone_hash_salt (M3):** two fresh installs create different salts; after a merge `profile`
-    keeps one, so phone hashes from the other copy stop matching. Rehash on import, or match
-    people differently?
+21. ~~**phone_hash_salt (M3)**~~ → per-person salt inside `people.phone_hash`;
+    `profile.phone_hash_salt` removed (ADR 0021).
 22. **Pixel baselines:** web screenshots are compared only on your Windows machine; Roborazzi
     allows ≤ 1% pixel drift between Windows goldens and Linux CI. Revisit if CI flakes.
 23. **Transfer sign ⇄:** Inter has no U+21C4, so it renders from the system font (ADR 0015).
@@ -70,3 +73,18 @@ Also decided:
 25. **PWA updates:** M0 auto-updates the service worker; DESIGN wants an update prompt (M6).
 26. **Emulator cold start:** a debug build took ~26–29 s to first frame on the software-rendered
     Pixel_7 emulator. Not representative; M6 Macrobenchmark on a release build is the real gate.
+
+## Decided in the M0 review round (2026-10-16)
+
+Owner asked Claude to decide; recorded here for traceability.
+- Merge hardening: strict inputs with error vectors, `external_ref` in a `ref` group, immutables
+  converge by tie-break order, no UNIQUE index that could block an import, safe-integer bounds,
+  24 h clock-ahead limit, value-based import outcomes (ADR 0018).
+- Tombstone compaction re-stamps payload groups to `x-compact` placeholders (ADR 0019).
+- Web app on a dedicated origin + shared-origin warning (ADR 0020; owner action in #13).
+- The main list tab is **Activity** on both platforms; People gets a FAB ("Add person").
+- Pre-release stub actions stay enabled and announce "<Feature> arrives in the next update."
+- Web performance gate: a Playwright web-vitals spec instead of a Lighthouse CI dependency.
+- A minimal `:benchmark` StartupBenchmark module exists from M0; Baseline Profiles stay M6.
+- Material Symbols ship with an Apache-2.0 notice; `third_party_notices.txt` is bundled in both
+  apps for the M7 About screen.

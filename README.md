@@ -27,6 +27,10 @@ You're welcome to fork zwallet and turn it into your own app:
 2. Edit `apps/android/branding.properties` (app name, `applicationId`) and the brand colour in
    `packages/design-tokens/tokens.json`.
 3. Build it yourself, or tag a release so the `release.yml` workflow builds and signs your APK.
+4. Serve the web app from its **own origin**: a custom domain, or a GitHub organisation that hosts
+   nothing else (its root `https://<org>.github.io/`, with `ZW_BASE=/` in `pages.yml`). Browsers
+   share storage across every Pages site of one account, so a sub-path like
+   `<you>.github.io/zwallet/` lets your other sites read the data (ADR 0020).
 
 Under the GPL-3.0 your fork must stay open source, and you must **keep** `LICENSE`, `NOTICE`,
 the copyright lines and the "Created by Viswaz Gummadi" credit on the About screen. Add your own

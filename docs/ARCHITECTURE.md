@@ -107,9 +107,10 @@ match it (a test diffs Room's exported schema JSON against it); the web worker a
 | `hlc` | `TEXT` | Hybrid logical clock of the last write = max over `field_hlc` |
 | `field_hlc` | `TEXT` (JSON) | `{merge_group: hlc}` — per-field-group LWW key (ADR 0009) |
 | `created_at`, `updated_at` | `INTEGER` | epoch ms, set locally |
-| `deleted_at` | `INTEGER NULL` | Tombstone. **Never purged** — compacted (payload columns cleared) once out of Trash (§5.5) |
+| `deleted_at` | `INTEGER NULL` | Tombstone. **Never purged** — compacted (payload re-stamped to `x-compact` values) once out of Trash (§5.5, ADR 0019) |
 
-There is no `user_id`: each install is one person's book. Money: `amount_minor INTEGER NOT NULL
+There is no `user_id`: each install is one person's book. Integers are bounded to ±(2^53 − 1) in
+every row schema so web and Android read identical values (ADR 0018). Money: `amount_minor INTEGER NOT NULL
 CHECK (amount_minor > 0)`, `currency TEXT NOT NULL DEFAULT 'INR'` (ISO-4217).
 
 ### 4.2 Canonical schema (abridged — implement fully in M0)
@@ -122,7 +123,7 @@ CHECK (amount_minor > 0)`, `currency TEXT NOT NULL DEFAULT 'INR'` (ISO-4217).
 profile(            -- single row, id = 'me'
   display_name TEXT, default_currency TEXT NOT NULL DEFAULT 'INR',
   month_start_day INTEGER NOT NULL DEFAULT 1 CHECK (month_start_day BETWEEN 1 AND 28),
-  my_vpa TEXT, phone_hash_salt TEXT NOT NULL, prefs TEXT NOT NULL DEFAULT '{}')
+  my_vpa TEXT, prefs TEXT NOT NULL DEFAULT '{}')
 
 accounts(name TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('bank','credit_card','cash','wallet','upi_lite','other')),
@@ -153,13 +154,16 @@ transactions(
   transfer_peer_id TEXT REFERENCES transactions,
   split_group_id TEXT, my_share_minor INTEGER, recurring_series_id TEXT)
 -- indexes: (occurred_at DESC) WHERE deleted_at IS NULL;
---          UNIQUE (external_ref, account_id) WHERE external_ref IS NOT NULL AND deleted_at IS NULL
+--          (external_ref, account_id) WHERE external_ref IS NOT NULL AND deleted_at IS NULL
+--          (not UNIQUE: user-data tables have no UNIQUE index unless it matches a deterministic id,
+--          so a valid file can always be imported — ADR 0018)
 
 tags(name TEXT NOT NULL, color_token TEXT, system_key TEXT /* e.g. 'reimbursable' */)
 transaction_tags(transaction_id TEXT NOT NULL REFERENCES transactions, tag_id TEXT NOT NULL REFERENCES tags)
 
-people(display_name TEXT NOT NULL, phone_hash TEXT, vpa TEXT, contact_lookup_key TEXT,
-  avatar_color_token TEXT)
+people(display_name TEXT NOT NULL,
+  phone_hash TEXT /* 'v1:<salt hex32>:<sha256 hex64>', per-person salt (ADR 0021) */,
+  vpa TEXT, contact_lookup_key TEXT, avatar_color_token TEXT)
 
 ledger_entries(person_id TEXT NOT NULL REFERENCES people,
   kind TEXT NOT NULL CHECK (kind IN ('lent','borrowed','repaid_to_me','repaid_by_me')),
@@ -207,9 +211,11 @@ The repository layer (never UI) stamps a fresh HLC on every **merge group** it t
 `packages/contracts/schema/<table>.json` (`x-merge-groups`); e.g. `transactions`:
 `amount{amount_minor,currency,original_amount_minor,original_currency}`, `type`,
 `when{occurred_at,occurred_tz}`, `account`, `category`, `merchant{merchant_id,counterparty_raw}`,
-`note`, `method`, `review`, `links{refund_of_id,transfer_peer_id,split_group_id,my_share_minor}`,
-`recurring`, `deleted`. Immutable columns (`id`, `created_at`, `source`, `external_ref`) are in
-no group. Codegen turns the JSON into Kotlin and TS constants.
+`note`, `method`, `review`, `ref{external_ref}`,
+`links{refund_of_id,transfer_peer_id,split_group_id,my_share_minor}`, `recurring`, `deleted`.
+Columns in no group (`id`, `created_at`, `x-immutable` such as `source`) never change locally; if
+two copies disagree, the merge keeps the greater value under the tie-break order so copies still
+converge (ADR 0018). Codegen turns the JSON into Kotlin and TS constants.
 
 ### 5.3 The `.zwallet` file
 ```
@@ -232,7 +238,9 @@ plaintext = gzip(JSON):
   native on Android (`javax.crypto`) and in browsers (WebCrypto) — no crypto dependency.
   Password ≥ 10 characters with a strength hint; there is no recovery.
 - **Limits:** reject files > 200 MB or plaintext > 1 GB decompressed (zip-bomb guard); validate
-  every row against `packages/contracts/schema/<table>.json` before touching the DB.
+  every row against `packages/contracts/schema/<table>.json` before touching the DB. Integers must
+  be plain digits within ±(2^53 − 1); every `hlc`/`field_hlc` stamp must match the exact HLC
+  pattern; `max_hlc` must equal the max stamp in the rows (ADR 0018).
 - **Versioning:** a file with `schema_version` newer than the app's is refused ("Update zwallet to
   open this file"); older ones are upgraded in memory by the same migration steps as the DB.
 - Shared vectors `packages/contracts/fixtures/backup/*.zwallet` (known password) prove that a file
@@ -240,8 +248,12 @@ plaintext = gzip(JSON):
 
 ### 5.4 Import = merge
 1. Decrypt (wrong password / tampering → GCM auth failure → nothing changes), validate, upgrade.
+   A file whose clock is more than 24 h ahead of this device is refused (`clock_ahead`, ADR 0018).
 2. **Preview** (dry run in memory): counts of new rows, updated rows, rows deleted by the file,
-   field conflicts, and rows unchanged. User confirms.
+   field conflicts, and rows unchanged. Outcomes come from merge-group values only, so stamp- or
+   meta-only differences count as unchanged and tombstones new to this device are not "new"
+   (`inserted | inserted_deleted | updated | deleted | restored | unchanged` + a `write` flag).
+   User confirms.
 3. **Snapshot** the DB (`VACUUM INTO` a file in app-private storage; web: an OPFS copy) → enables
    **Undo import** (kept until the next import or 7 days).
 4. In **one SQLite transaction**, for each incoming row:
@@ -262,9 +274,11 @@ The merge function lives in `core/transfer` (pure Kotlin) and `src/transfer` (TS
 against `packages/contracts/fixtures/merge.json`.
 
 ### 5.5 Trash and tombstones
-Deleted rows stay recoverable in Trash for 30 days, then are **compacted**: payload columns are
-cleared but `id`, `hlc`, `field_hlc`, `deleted_at` remain forever (a few dozen bytes). This is what
-lets an old file from another device be imported months later without resurrecting deletions.
+Deleted rows stay recoverable in Trash for 30 days, then are **compacted** (ADR 0019): every payload
+group is re-stamped with one fresh HLC and set to its compacted value (NULL, the SQL default, or
+the table's `x-compact` placeholder), while `id`, stamps and `deleted_at` remain forever. The fresh
+stamps beat any older copy, so an old file imported months later neither resurrects the row nor
+brings its payload back; the job re-runs after each import for rows a newer edit touched.
 
 ### 5.6 Invariants (property-tested, both platforms)
 - **Convergence:** devices that exchange files in any order and any number of times end with
@@ -428,7 +442,7 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 | Background | No wakelocks; 0 periodic jobs; 0 alarms when nothing scheduled | `dumpsys batterystats`, `dumpsys jobscheduler` review in M6 |
 | APK (per ABI) | ≤ 12 MB | CI size check |
 | Web initial JS | ≤ 180 KB gzip | CI bundle check |
-| Web LCP / INP | ≤ 1.2 s / ≤ 100 ms (mid laptop, warm cache) | Lighthouse CI |
+| Web LCP / INP | ≤ 1.2 s / ≤ 100 ms (mid laptop, warm cache) | Playwright web-vitals spec |
 | Web table (50k) | 60 fps scroll | Playwright trace |
 | Web import (50k) | ≤ 8 s in the worker, UI stays responsive | Playwright trace |
 
@@ -437,8 +451,15 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 ## 10. Security & privacy
 - **Nothing online:** Android has no INTERNET permission (OS-enforced); the web app is static and
   its CSP forbids any connection but its own origin. No accounts, no server, no telemetry.
-- Phone numbers stored only as a salted SHA-256 hash (salt in `profile`, exported with it so
-  hashes stay comparable across copies).
+- Phone numbers stored only as a salted SHA-256 hash with a per-person salt (ADR 0021). This keeps
+  plain numbers out of the DB and exports; it is not strong protection against brute force of a
+  10-digit space, so a leaked file still relies on its encryption.
+- **Web origin isolation:** browser storage is per origin, so the web app must be served from an
+  origin used only by zwallet (custom domain or a dedicated org's root site), never a sub-path of a
+  shared `<user>.github.io`. The app warns when it detects a shared origin (ADR 0020).
+- Web CSP (meta): `default-src 'self'`, `connect-src 'self'`, `form-action 'none'`,
+  `base-uri 'none'`, `object-src 'none'`. `frame-ancestors` can't be set from a meta tag, so
+  clickjacking protection depends on the host; the app has no one-click destructive actions.
 - Export files: AES-256-GCM, PBKDF2-HMAC-SHA256 600k; the password is never stored; the envelope
   is authenticated (AAD) so a tampered header fails.
 - Threat model notes:
@@ -465,7 +486,7 @@ web paste-to-import uses the exact same engine. Stretch goal of M2; otherwise M5
 | Transfer | Kotest/fast-check property tests over random multi-copy edit/exchange histories; shared `merge.json` and `backup/*.zwallet` vectors on both platforms | §5.6 invariants; Kotlin↔TS file compatibility; wrong password/tampered/oversized/newer-schema files rejected without changes |
 | Analytics | Golden fixtures on both apps | byte-identical outputs |
 | UI | Roborazzi screenshot tests (light/dark, 1.0/2.0 font), Compose UI tests; Playwright e2e + screenshots | every screen state |
-| Perf | Macrobenchmark, Lighthouse CI | §9 budgets |
+| Perf | Macrobenchmark (`:benchmark` StartupBenchmark), Playwright web-vitals spec (cold LCP, max event duration) | §9 budgets |
 | Privacy | CI manifest check (no INTERNET); web CSP test; Playwright asserts zero non-origin requests | §10 |
 
 ---
@@ -475,8 +496,8 @@ Every workflow invokes `node scripts/verify.mjs <track>` (ADR 0011) so local (Wi
 (Linux) run identical gates; a `windows-latest` smoke job runs `contracts web` to keep it portable.
 - `android.yml`: ktlint, detekt, unit tests, Roborazzi verify, assemble debug + release, APK size
   check, **merged-manifest permission check**; nightly: Macrobenchmark on emulator (indicative).
-- `web.yml`: tsc, eslint, vitest, build, bundle-size check, Playwright (incl. zero-egress check),
-  Lighthouse CI.
+- `web.yml`: tsc, eslint, vitest, build, bundle-size check, Playwright (incl. zero-egress check,
+  CSP violation events, and a web-vitals spec for LCP/INP; no Lighthouse dependency).
 - `contracts.yml`: JSON schema validation, merge-groups codegen up to date, golden fixtures
   regenerated-and-diffed, cross-platform backup vectors, sms-rules report.
 - `pages.yml`: on push to `main`, build `apps/web` and deploy to **GitHub Pages**.
@@ -494,4 +515,5 @@ policy *(superseded by 0012)* · 0006 no third-party SDKs · 0007 analytics SQL 
 0008 contact picker over READ_CONTACTS · 0009 per-field LWW merge · 0010 deterministic SMS ids ·
 0011 cross-platform tooling · 0012 local-only, no network · 0013 file-based transfer & `.zwallet`
 format · 0014 GPL-3.0-only + DCO · 0015 bundled Inter subset · 0016 schema v1 editable until
-the first release · 0017 conflict detection by per-node frontiers.
+the first release · 0017 conflict detection by per-node frontiers · 0018 merge input hardening ·
+0019 tombstone compaction · 0020 web app on a dedicated origin · 0021 per-person phone salt.
