@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mergeRow, frontier, parseFieldHlc, stringifyFieldHlc } from '../lib/merge-reference.mjs';
+import { smsId } from '../lib/ids.mjs';
 
 const read = (rel) => JSON.parse(readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8'));
 const money = read('fixtures/money.json');
@@ -51,6 +52,14 @@ test('hlc clock vectors: every step has a physical clock, errors keep last, drif
       }
     }
   assert.deepEqual([...errors].sort(), ['now:wall_out_of_range', 'receive:clock_ahead']);
+});
+
+test('uuid vectors: sender trimming edges are covered and the reference rejects unsafe dates', () => {
+  const uuid = read('fixtures/uuid.json');
+  const senders = uuid.sms.map((c) => c.sender).join('');
+  for (const cp of [0xfeff, 0x1c, 0x1f, 0xa0, 0x2028])
+    assert.ok(senders.includes(String.fromCodePoint(cp)), `sender vector with U+${cp.toString(16)}`);
+  for (const bad of [1.5, 2 ** 53, NaN]) assert.throws(() => smsId('AXISBK', 'b', bad), RangeError);
 });
 
 // ── property tests on the reference merge ────────────────────────────────────────────────────

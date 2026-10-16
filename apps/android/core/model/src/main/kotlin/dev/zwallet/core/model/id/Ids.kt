@@ -63,10 +63,13 @@ object Ids {
     private val DLT_PREFIX = Regex("^[A-Za-z]{2}-")
     private val DLT_SUFFIX = Regex("-[STPstp]$")
 
-    /** Strips the DLT operator prefix ("VM-") and the -S/-T/-P suffix, then upper-cases. */
+    /**
+     * Trims Unicode White_Space (not Kotlin's trim(), which also strips U+001C–U+001F; see uuid.json),
+     * strips the DLT operator prefix ("VM-") and the -S/-T/-P suffix, then upper-cases.
+     */
     fun normalizeSender(sender: String): String =
         sender
-            .trim()
+            .trim { isWhiteSpace(it.code) }
             .replace(DLT_PREFIX, "")
             .replace(DLT_SUFFIX, "")
             .uppercase(java.util.Locale.ROOT)
