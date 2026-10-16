@@ -28,7 +28,7 @@ merge happens when a `.zwallet` file is imported (ADR 0013), but the semantics a
   - `recurring` {recurring_series_id}
   - `deleted` {deleted_at}
 
-  Immutable columns (`id`, `created_at`, `source`, `external_ref`) are in no group.
+  Immutable columns (`id`, `created_at`, `source`) are in no group (`external_ref` is the `ref` group since ADR 0018; differing immutables converge to the greater value).
 - **Local writes** stamp a fresh HLC on each group they touch, in the repository layer.
 - **Merge rule** (on import, identical in Kotlin and TS): for each group, take the incoming
   values if `incoming.field_hlc[g] > local.field_hlc[g]` (a missing group counts as the empty

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### M0 review round (2026-10-16)
+- **Fixed:** a money expression ending in two operators (`120++`) crashed quick add on both apps.
+- **Fixed:** the Android debug build crashed on rotation or theme change (StrictMode explicit-GC
+  detection); EmojiCompat's downloadable-font initializer removed.
+- **Merge hardening (ADR 0018):** identical strict validation and error vectors in the reference,
+  web and Android merges; `external_ref` merges by LWW; every column converges; no UNIQUE index
+  can block an import; safe-integer bounds; files from a clock > 24 h ahead are refused; import
+  preview counts real changes only.
+- **Tombstone compaction** specified (ADR 0019); **per-person phone salt** (ADR 0021).
+- **Web:** works at 200% text with no sideways scrolling; phone menu reaches every destination;
+  "Activity" naming on both apps; shared-origin warning (ADR 0020); stricter CSP and a CSP test
+  that can fail; faster cold load (inline theme script by hash, eager Home, font preload);
+  web-vitals e2e gate.
+- **Android:** visible, announced loading skeleton; live reduced-motion; outline-token button
+  borders; empty-state actions and a People FAB; nav labels that fit at font 2.0 on 360dp;
+  medium-width gutters; Compose stability fixes; `:benchmark` startup harness.
+- **Licensing:** Material Symbols files are marked Apache-2.0 and both apps bundle
+  `third_party_notices.txt` (Inter OFL + Material Symbols Apache-2.0).
+
 ### M0 — Foundations (2026-10-15)
 - **Monorepo:** pnpm workspaces + Turborepo, Gradle 9.8 / AGP 9.4 / Kotlin 2.4 with convention
   plugins, and `node scripts/verify.mjs all|contracts|web|android` as the single gate runner for
