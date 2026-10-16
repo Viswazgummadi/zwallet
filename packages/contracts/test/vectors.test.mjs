@@ -39,6 +39,20 @@ test('hlc vectors: order list is sorted and parse cases round-trip', () => {
   }
 });
 
+test('hlc clock vectors: every step has a physical clock, errors keep last, drift and MAX_WALL are covered', () => {
+  const errors = new Set();
+  for (const c of hlc.clock)
+    for (const s of c.steps) {
+      assert.ok(Number.isSafeInteger(s.phys), `${c.name}: step without phys`);
+      if (s.error) {
+        assert.ok(['clock_ahead', 'wall_out_of_range'].includes(s.error), s.error);
+        assert.ok('expect_last' in s, `${c.name}: error step must state the unchanged last`);
+        errors.add(`${s.op}:${s.error}`);
+      }
+    }
+  assert.deepEqual([...errors].sort(), ['now:wall_out_of_range', 'receive:clock_ahead']);
+});
+
 // ── property tests on the reference merge ────────────────────────────────────────────────────
 function rng(seed) {
   let s = seed >>> 0;

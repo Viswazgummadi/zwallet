@@ -39,9 +39,25 @@ data class Hlc(
     }
 }
 
+/** Error codes shared with the web app (fixtures/hlc.json). */
+enum class HlcError(
+    val code: String,
+) {
+    /** A remote HLC more than [HlcClock.MAX_DRIFT_MS] ahead of the physical clock. */
+    CLOCK_AHEAD("clock_ahead"),
+
+    /** now() would need a wall outside 0..[Hlc.MAX_WALL]. */
+    WALL_OUT_OF_RANGE("wall_out_of_range"),
+}
+
+class HlcException(
+    val error: HlcError,
+) : RuntimeException("hlc: ${error.code}")
+
 /**
  * The per-install clock. [now] stamps local writes; [receive] is called after an import with the
  * file's `max_hlc` so later local edits sort after everything imported (ARCHITECTURE §5.1).
+ * A failed call throws [HlcException] and leaves the clock unchanged.
  * Not thread-safe by itself: the repository serializes writes.
  */
 class HlcClock(
@@ -61,11 +77,23 @@ class HlcClock(
             wall += 1
             counter = 0
         }
+        if (wall !in 0..Hlc.MAX_WALL) throw HlcException(HlcError.WALL_OUT_OF_RANGE)
         return Hlc(wall, counter, node).also { last = it }
     }
 
+    /**
+     * Advances the clock past an imported HLC. A remote wall more than [MAX_DRIFT_MS] ahead of the
+     * physical clock is rejected ([HlcError.CLOCK_AHEAD]): adopting it would pin every later local
+     * write to that far-future wall and make them win every merge until real time catches up.
+     */
     fun receive(remote: Hlc) {
+        if (remote.wall > physicalMs() + MAX_DRIFT_MS) throw HlcException(HlcError.CLOCK_AHEAD)
         val prev = last
         if (prev == null || remote > prev) last = remote
+    }
+
+    companion object {
+        /** 24 h: how far ahead of the physical clock an imported HLC may be. */
+        const val MAX_DRIFT_MS: Long = 86_400_000L
     }
 }

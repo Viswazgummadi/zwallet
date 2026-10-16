@@ -2,7 +2,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { fixture } from '../test/fixtures.ts';
-import { HlcClock, formatHlc, parseHlc } from './hlc.ts';
+import { HlcClock, HlcError, MAX_DRIFT_MS, MAX_WALL, formatHlc, parseHlc } from './hlc.ts';
 
 interface ParseCase {
   text: string;
@@ -13,10 +13,11 @@ interface ParseCase {
 }
 interface Step {
   op: 'now' | 'receive';
-  phys?: number;
+  phys: number;
   hlc?: string;
   expect?: string;
   expect_last?: string;
+  error?: string;
 }
 const hlc = fixture<{
   parse: ParseCase[];
@@ -43,14 +44,41 @@ describe('hlc vectors (packages/contracts/fixtures/hlc.json)', () => {
     let phys = 0;
     const clock = new HlcClock(c.node, c.last || null, () => phys);
     for (const s of c.steps) {
-      if (s.op === 'now') {
-        phys = s.phys!;
-        expect(clock.now()).toBe(s.expect);
-      } else {
+      phys = s.phys;
+      const run = (): string | null => {
+        if (s.op === 'now') return clock.now();
         clock.receive(s.hlc!);
+        return null;
+      };
+      if (s.error) {
+        expect(run).toThrow(expect.objectContaining({ code: s.error }) as Error);
+        expect(clock.last).toBe(s.expect_last);
+      } else if (s.op === 'now') {
+        expect(run()).toBe(s.expect);
+      } else {
+        run();
         expect(clock.last).toBe(s.expect_last);
       }
     }
+  });
+
+  it('shares MAX_WALL with the 13-digit text form', () => {
+    expect(formatHlc({ wall: MAX_WALL, counter: 0, node: '00000000' })).toBe(
+      '9999999999999-0000-00000000',
+    );
+    expect(MAX_DRIFT_MS).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it.each(hlc.parse.filter((c) => c.error))('constructor rejects malformed last "$text"', (c) => {
+    expect(() => new HlcClock('0a1b2c3d', c.text)).toThrow(HlcError);
+  });
+
+  it.each(hlc.parse.filter((c) => c.error))('receive rejects malformed "$text"', (c) => {
+    const clock = new HlcClock('0a1b2c3d', '1760000000000-0000-0a1b2c3d', () => 1_760_000_000_000);
+    expect(() => {
+      clock.receive(c.text);
+    }).toThrow(expect.objectContaining({ code: 'invalid' }) as Error);
+    expect(clock.last).toBe('1760000000000-0000-0a1b2c3d');
   });
 });
 

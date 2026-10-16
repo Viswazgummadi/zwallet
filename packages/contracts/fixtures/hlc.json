@@ -1,5 +1,5 @@
 {
-  "description": "Hybrid logical clock vectors (ARCHITECTURE §5.1, ADR 0009). Hand-written. Text form: 13 decimal digits of wall ms, '-', 4 lowercase hex digits of counter, '-', 8 lowercase hex digits of node id. Lexicographic order of the text = clock order. now(phys): wall = max(phys, last.wall); counter = last.counter + 1 if wall == last.wall else 0; if counter > 0xffff then wall += 1, counter = 0; last = result (own node). receive(h) (after an import, with the file's max_hlc): last = max(last, h) by text order; the next now() then sorts after h. An empty last means no clock yet.",
+  "description": "Hybrid logical clock vectors (ARCHITECTURE §5.1, ADR 0009). Hand-written. Text form: 13 decimal digits of wall ms, '-', 4 lowercase hex digits of counter, '-', 8 lowercase hex digits of node id. Lexicographic order of the text = clock order. now(phys): wall = max(phys, last.wall); counter = last.counter + 1 if wall == last.wall else 0; if counter > 0xffff then wall += 1, counter = 0; if wall is outside 0..9999999999999 (MAX_WALL) fail with wall_out_of_range; last = result (own node). receive(h) at physical time phys (after an import, with the file's max_hlc): if h.wall > phys + 86400000 (MAX_DRIFT_MS, 24 h) fail with clock_ahead; else last = max(last, h) by text order; the next now() then sorts after h. A failed step leaves last unchanged (expect_last). An empty last means no clock yet. Every step carries phys, the physical clock in ms at that step.",
   "parse": [
     {
       "text": "1760000000000-0000-0a1b2c3d",
@@ -7,7 +7,12 @@
       "counter": 0,
       "node": "0a1b2c3d"
     },
-    { "text": "0000000000000-0000-00000000", "wall": 0, "counter": 0, "node": "00000000" },
+    {
+      "text": "0000000000000-0000-00000000",
+      "wall": 0,
+      "counter": 0,
+      "node": "00000000"
+    },
     {
       "text": "9999999999999-ffff-ffffffff",
       "wall": 9999999999999,
@@ -20,13 +25,34 @@
       "counter": 255,
       "node": "deadbeef"
     },
-    { "text": "1760000000000-0000-0A1B2C3D", "error": "invalid" },
-    { "text": "176000000000-0000-0a1b2c3d", "error": "invalid" },
-    { "text": "1760000000000-00000-0a1b2c3d", "error": "invalid" },
-    { "text": "1760000000000-0000-0a1b2c3", "error": "invalid" },
-    { "text": "1760000000000_0000_0a1b2c3d", "error": "invalid" },
-    { "text": "-760000000000-0000-0a1b2c3d", "error": "invalid" },
-    { "text": "", "error": "invalid" }
+    {
+      "text": "1760000000000-0000-0A1B2C3D",
+      "error": "invalid"
+    },
+    {
+      "text": "176000000000-0000-0a1b2c3d",
+      "error": "invalid"
+    },
+    {
+      "text": "1760000000000-00000-0a1b2c3d",
+      "error": "invalid"
+    },
+    {
+      "text": "1760000000000-0000-0a1b2c3",
+      "error": "invalid"
+    },
+    {
+      "text": "1760000000000_0000_0a1b2c3d",
+      "error": "invalid"
+    },
+    {
+      "text": "-760000000000-0000-0a1b2c3d",
+      "error": "invalid"
+    },
+    {
+      "text": "",
+      "error": "invalid"
+    }
   ],
   "order": [
     "0000000000000-0000-00000000",
@@ -44,22 +70,48 @@
       "node": "0a1b2c3d",
       "last": "",
       "steps": [
-        { "op": "now", "phys": 1000, "expect": "0000000001000-0000-0a1b2c3d" },
-        { "op": "now", "phys": 1000, "expect": "0000000001000-0001-0a1b2c3d" },
-        { "op": "now", "phys": 999, "expect": "0000000001000-0002-0a1b2c3d" },
-        { "op": "now", "phys": 2000, "expect": "0000000002000-0000-0a1b2c3d" },
+        {
+          "op": "now",
+          "phys": 1000,
+          "expect": "0000000001000-0000-0a1b2c3d"
+        },
+        {
+          "op": "now",
+          "phys": 1000,
+          "expect": "0000000001000-0001-0a1b2c3d"
+        },
+        {
+          "op": "now",
+          "phys": 999,
+          "expect": "0000000001000-0002-0a1b2c3d"
+        },
+        {
+          "op": "now",
+          "phys": 2000,
+          "expect": "0000000002000-0000-0a1b2c3d"
+        },
         {
           "op": "receive",
+          "phys": 2000,
           "hlc": "0000000005000-0003-ffffffff",
           "expect_last": "0000000005000-0003-ffffffff"
         },
-        { "op": "now", "phys": 2001, "expect": "0000000005000-0004-0a1b2c3d" },
+        {
+          "op": "now",
+          "phys": 2001,
+          "expect": "0000000005000-0004-0a1b2c3d"
+        },
         {
           "op": "receive",
+          "phys": 2001,
           "hlc": "0000000004000-0000-ffffffff",
           "expect_last": "0000000005000-0004-0a1b2c3d"
         },
-        { "op": "now", "phys": 6000, "expect": "0000000006000-0000-0a1b2c3d" }
+        {
+          "op": "now",
+          "phys": 6000,
+          "expect": "0000000006000-0000-0a1b2c3d"
+        }
       ]
     },
     {
@@ -67,8 +119,16 @@
       "node": "0a1b2c3d",
       "last": "0000000007000-ffff-0a1b2c3d",
       "steps": [
-        { "op": "now", "phys": 7000, "expect": "0000000007001-0000-0a1b2c3d" },
-        { "op": "now", "phys": 7000, "expect": "0000000007001-0001-0a1b2c3d" }
+        {
+          "op": "now",
+          "phys": 7000,
+          "expect": "0000000007001-0000-0a1b2c3d"
+        },
+        {
+          "op": "now",
+          "phys": 7000,
+          "expect": "0000000007001-0001-0a1b2c3d"
+        }
       ]
     },
     {
@@ -78,10 +138,112 @@
       "steps": [
         {
           "op": "receive",
+          "phys": 8000,
           "hlc": "0000000008000-0000-00000002",
           "expect_last": "0000000008000-0000-00000002"
         },
-        { "op": "now", "phys": 8000, "expect": "0000000008000-0001-00000001" }
+        {
+          "op": "now",
+          "phys": 8000,
+          "expect": "0000000008000-0001-00000001"
+        }
+      ]
+    },
+    {
+      "name": "receive rejects a remote wall more than 24 h ahead of the physical clock; exactly 24 h is accepted",
+      "node": "0a1b2c3d",
+      "last": "1760000000000-0000-0a1b2c3d",
+      "steps": [
+        {
+          "op": "receive",
+          "phys": 1760000000000,
+          "hlc": "1760086400001-0000-ffffffff",
+          "error": "clock_ahead",
+          "expect_last": "1760000000000-0000-0a1b2c3d"
+        },
+        {
+          "op": "now",
+          "phys": 1760000000000,
+          "expect": "1760000000000-0001-0a1b2c3d"
+        },
+        {
+          "op": "receive",
+          "phys": 1760000000000,
+          "hlc": "1760086400000-0000-ffffffff",
+          "expect_last": "1760086400000-0000-ffffffff"
+        },
+        {
+          "op": "now",
+          "phys": 1760000000000,
+          "expect": "1760086400000-0001-0a1b2c3d"
+        }
+      ]
+    },
+    {
+      "name": "receive accepts a remote just under 24 h ahead, and a rejected one once the physical clock catches up",
+      "node": "0a1b2c3d",
+      "last": "",
+      "steps": [
+        {
+          "op": "receive",
+          "phys": 1760000000000,
+          "hlc": "1760086400001-0000-ffffffff",
+          "error": "clock_ahead",
+          "expect_last": ""
+        },
+        {
+          "op": "receive",
+          "phys": 1760000000000,
+          "hlc": "1760086399999-0005-ffffffff",
+          "expect_last": "1760086399999-0005-ffffffff"
+        },
+        {
+          "op": "receive",
+          "phys": 1760000000001,
+          "hlc": "1760086400001-0000-ffffffff",
+          "expect_last": "1760086400001-0000-ffffffff"
+        },
+        {
+          "op": "now",
+          "phys": 1760000000002,
+          "expect": "1760086400001-0001-0a1b2c3d"
+        }
+      ]
+    },
+    {
+      "name": "now() fails past MAX_WALL and leaves the clock unchanged",
+      "node": "0a1b2c3d",
+      "last": "9999999999999-fffe-0a1b2c3d",
+      "steps": [
+        {
+          "op": "now",
+          "phys": 9999999999999,
+          "expect": "9999999999999-ffff-0a1b2c3d"
+        },
+        {
+          "op": "now",
+          "phys": 9999999999999,
+          "error": "wall_out_of_range",
+          "expect_last": "9999999999999-ffff-0a1b2c3d"
+        }
+      ]
+    },
+    {
+      "name": "now() fails when the physical clock itself is past MAX_WALL",
+      "node": "0a1b2c3d",
+      "last": "",
+      "steps": [
+        {
+          "op": "now",
+          "phys": 10000000000000,
+          "error": "wall_out_of_range",
+          "expect_last": ""
+        },
+        {
+          "op": "now",
+          "phys": 1760000000000,
+          "expect": "1760000000000-0000-0a1b2c3d"
+        }
       ]
     }
   ]
